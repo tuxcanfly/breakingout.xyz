@@ -65,7 +65,9 @@ app.get("/api/market", (_req, res) => {
 // Serve static frontend in production
 const distPath = path.resolve(__dirname, "../dist")
 app.use(express.static(distPath))
-app.get("*", (_req, res) => {
+// SPA fallback: return index.html for any non-file, non-API route
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api") || req.path.includes(".")) return next()
   res.sendFile(path.join(distPath, "index.html"))
 })
 
