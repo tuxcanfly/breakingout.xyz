@@ -45,6 +45,38 @@ async function refreshData() {
 app.get("/api/dashboard", (_req, res) => res.json(dashboardData))
 app.get("/api/market", (_req, res) => res.json(dashboardData.market))
 
+// Debug: check Puppeteer
+app.get("/api/debug", async (_req, res) => {
+  const info: Record<string, unknown> = {
+    node: process.version,
+    platform: process.platform,
+    puppeteer: true,
+    errors: [] as string[],
+  }
+  // Check if puppeteer can find chrome
+  try {
+    const puppeteer = await import("puppeteer")
+    info["puppeteerPath"] = puppeteer.executablePath()
+  } catch (e: unknown) {
+    info["puppeteerError"] = String(e)
+    info["errors"].push(String(e))
+  }
+  // Check node_modules
+  const fs = await import("fs")
+  const path = await import("path")
+  const nm = path.resolve("node_modules")
+  info["nodeModules"] = fs.readdirSync(nm).filter((d: string) => d.startsWith("puppeteer") || d.startsWith("chrome"))
+  // Check if chrome binary exists
+  const chromePaths = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"]
+  for (const p of chromePaths) {
+    try {
+      await fs.promises.access(p)
+      info["chromeFound"] = p
+    } catch { /* not found */ }
+  }
+  res.json(info)
+})
+
 // Serve static frontend
 const distPath = path.resolve(__dirname, "../dist")
 app.use(express.static(distPath))
