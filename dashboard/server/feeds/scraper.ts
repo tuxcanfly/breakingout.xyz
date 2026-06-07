@@ -229,7 +229,7 @@ async function fetchCrypto(): Promise<ScreenerAsset[]> {
     console.error("Crypto fetch failed:", err instanceof Error ? err.message : String(err))
     const cached = getCached<ScreenerAsset[]>("crypto")
     if (cached && cached.length > 0) return cached
-    return getStaticCrypto()
+    return getCached<ScreenerAsset[]>("crypto") || []
   }
 }
 
@@ -416,23 +416,7 @@ async function fetchCommodities(): Promise<ScreenerAsset[]> {
 
 // ── Tag computation ────────────────────────────────────────────────────────
 
-function getStaticStocks() {
-  return [
-    { symbol: "NVDA", name: "NVIDIA Corp", category: "stocks", industry: "Semiconductors", avgVolume: "45.2B", tightness: "tight", adrPercent: 2.3, ma10: "up", ma20: "up", ma50: "up", ma200: "up", pct1M: 8.2, pct3M: 22.4, pct6M: 58.1, pct1Y: 185.3 },
-    { symbol: "PLTR", name: "Palantir Technologies", category: "stocks", industry: "Software", avgVolume: "38.1B", tightness: "tight", adrPercent: 3.8, ma10: "up", ma20: "up", ma50: "up", ma200: "up", pct1M: 15.7, pct3M: 41.2, pct6M: 95.8, pct1Y: 210.5 },
-    { symbol: "MSTR", name: "MicroStrategy", category: "stocks", industry: "Finance", avgVolume: "12.3B", tightness: "medium", adrPercent: 6.2, ma10: "up", ma20: "up", ma50: "up", ma200: "up", pct1M: 11.5, pct3M: 28.3, pct6M: 65.4, pct1Y: 180.2 },
-    { symbol: "AMD", name: "AMD Inc", category: "stocks", industry: "Semiconductors", avgVolume: "62.4B", tightness: "", adrPercent: 3.9, ma10: "up", ma20: "up", ma50: "down", ma200: "up", pct1M: 5.2, pct3M: -2.8, pct6M: 15.6, pct1Y: 48.9 },
-    { symbol: "TSLA", name: "Tesla Inc", category: "stocks", industry: "Automotive", avgVolume: "85.6B", tightness: "", adrPercent: 4.5, ma10: "down", ma20: "down", ma50: "up", ma200: "up", pct1M: -3.8, pct3M: 8.2, pct6M: 22.5, pct1Y: 62.1 },
-  ]
-}
 
-function getStaticCrypto() {
-  return [
-    { symbol: "BTC", name: "Bitcoin", category: "crypto", industry: "Cryptocurrency", avgVolume: "38.2B", tightness: "", adrPercent: 3.5, ma10: "up", ma20: "up", ma50: "down", ma200: "up", pct1M: 4.2, pct3M: 12.8, pct6M: 35.4, pct1Y: 145.2 },
-    { symbol: "ETH", name: "Ethereum", category: "crypto", industry: "Cryptocurrency", avgVolume: "18.5B", tightness: "", adrPercent: 4.2, ma10: "down", ma20: "down", ma50: "down", ma200: "up", pct1M: -2.8, pct3M: 5.6, pct6M: 18.9, pct1Y: 88.5 },
-    { symbol: "SOL", name: "Solana", category: "crypto", industry: "Cryptocurrency", avgVolume: "5.8B", tightness: "", adrPercent: 6.8, ma10: "up", ma20: "up", ma50: "up", ma200: "up", pct1M: 12.5, pct3M: 28.3, pct6M: 72.1, pct1Y: 210.8 },
-  ]
-}
 
 function computeTags(
   assets: ScreenerAsset[],
