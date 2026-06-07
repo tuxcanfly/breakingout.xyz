@@ -241,7 +241,7 @@ function TightnessDot({ score }: { score: number }) {
 }
 
 const tagStyles: Record<string, { bg: string; color: string; border: string }> = {
-  "naaim-optimal":    { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
+  "naaim":    { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
   "naaim-extreme":    { bg: "rgba(203,75,22,0.10)", color: "#cb4b16", border: "rgba(203,75,22,0.25)" },
   "naaim-caution":    { bg: "rgba(220,50,47,0.10)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
   "all-ma-up":        { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.20)" },

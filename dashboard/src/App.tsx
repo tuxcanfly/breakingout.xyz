@@ -3,7 +3,7 @@ import { fetchDashboard } from "./lib/api"
 import type { DashboardData, AssetCategory, ScreenerAsset } from "./types"
 import { AssetTable } from "./components/AssetTable"
 import { Input } from "./components/ui/input"
-import { Search, LineChart } from "lucide-react"
+import { Search, LineChart, HelpCircle, X } from "lucide-react"
 
 function tightnessScore(a: ScreenerAsset): number {
   const mas = [a.ma10, a.ma20, a.ma50, a.ma200]
@@ -23,12 +23,37 @@ const tabs: { id: TabId; label: string }[] = [
   { id: "commodities", label: "Commodities" },
 ]
 
+const HELP_SECTIONS = [
+  {
+    title: "Tight",
+    body: "Price within 2% of its 20-day SMA —\nindicates low-volatility consolidation\nand potential breakout setup.",
+  },
+  {
+    title: "ADR",
+    body: "Average Daily Range — the typical\nprice swing between high and\nlow over the last 14 days.",
+  },
+  {
+    title: "MAs", body: "Moving Average direction for\n10, 20, 50, and 200-period SMAs.\nGreen = price above MA (uptrend).",
+  },
+  {
+    title: "Tags",
+    body: "Algorithmic signal tags:\n• naaim — favorable NAAIM regime\n• all-ma-up — all MAs aligned bullish\n• momentum-leader — top 5% 1M return\n• breakout — strong + MA aligned\n• stage2 — up across 1M 3M 6M\n• tight-base — consolidation\n• aleabitoreddit — high momentum + vol",
+  },
+  {
+    title: "Returns",
+    body: "24h, 1M, 3M, 6M, 1Y — trailing\npercentage return over each period.\nGreen = positive, Red = negative.",
+  },
+]
+
 function App() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>("all")
   const [filter, setFilter] = useState("")
+  const [helpOpen, setHelpOpen] = useState(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const helpRef = useRef<HTMLDivElement>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -43,15 +68,12 @@ function App() {
     }
   }, [])
 
-  // Load on mount, then silently refresh if >30 min stale on tab focus
   const lastLoadRef = useRef(0)
 
   useEffect(() => {
     loadData().then(() => { lastLoadRef.current = Date.now() })
-
     const onFocus = () => {
-      const elapsed = Date.now() - lastLoadRef.current
-      if (elapsed > 30 * 60 * 1000) {
+      if (Date.now() - lastLoadRef.current > 30 * 60 * 1000) {
         loadData().then(() => { lastLoadRef.current = Date.now() })
       }
     }
@@ -62,6 +84,32 @@ function App() {
       window.removeEventListener("focus", onFocus)
     }
   }, [loadData])
+
+  // Keyboard shortcuts: / = search, ? = help, Escape = close help
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+      if (e.key === "?") { setHelpOpen((v) => !v) }
+      if (e.key === "Escape") { setHelpOpen(false) }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  // Trap focus in help
+  useEffect(() => {
+    if (!helpOpen) return
+    const el = helpRef.current
+    if (!el) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setHelpOpen(false)
+    }
+    el.addEventListener("keydown", onKey)
+    return () => el.removeEventListener("keydown", onKey)
+  }, [helpOpen])
 
   if (loading && !data) {
     return (
@@ -109,6 +157,45 @@ function App() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--sol-base3)" }}>
+      {/* Help overlay */}
+      {helpOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,43,54,0.4)", backdropFilter: "blur(2px)" }}
+          onClick={() => setHelpOpen(false)}
+        >
+          <div
+            ref={helpRef}
+            className="rounded-xl shadow-2xl w-[380px] max-h-[80vh] overflow-y-auto animate-fadeIn"
+            style={{ backgroundColor: "var(--sol-base3)", border: "1px solid var(--sol-base2)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: "var(--sol-base2)" }}>
+              <h2 className="font-bold" style={{ color: "var(--sol-base02)", fontSize: "14px" }}>Legend</h2>
+              <button onClick={() => setHelpOpen(false)} className="p-1 rounded hover:bg-solar-base02/50 cursor-pointer" style={{ color: "var(--sol-base01)" }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {HELP_SECTIONS.map((s) => (
+                <div key={s.title}>
+                  <div className="font-bold" style={{ color: "var(--sol-blue)", fontSize: "12px" }}>{s.title}</div>
+                  <pre style={{ color: "var(--sol-base01)", fontSize: "11px", lineHeight: 1.5, fontFamily: "system-ui, -apple-system, sans-serif", margin: 0, whiteSpace: "pre-wrap" }}>{s.body}</pre>
+                </div>
+              ))}
+              <div className="pt-2 border-t" style={{ borderColor: "var(--sol-base2)" }}>
+                <div className="font-bold" style={{ color: "var(--sol-base02)", fontSize: "12px" }}>Shortcuts</div>
+                <div className="flex justify-between text-xs mt-1" style={{ color: "var(--sol-base01)" }}>
+                  <span><kbd className="px-1 py-0.5 rounded" style={{ background: "var(--sol-base2)", fontFamily: "monospace" }}>/</kbd> Search</span>
+                  <span><kbd className="px-1 py-0.5 rounded" style={{ background: "var(--sol-base2)", fontFamily: "monospace" }}>?</kbd> This panel</span>
+                  <span><kbd className="px-1 py-0.5 rounded" style={{ background: "var(--sol-base2)", fontFamily: "monospace" }}>Esc</kbd> Close</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Compact header bar */}
       <header
         className="sticky top-0 z-50 border-b"
@@ -158,11 +245,22 @@ function App() {
             ))}
           </div>
 
+          {/* Help button */}
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded font-medium cursor-pointer"
+            style={{ color: "var(--sol-base01)", fontSize: "11px" }}
+            title="Help (?)"
+          >
+            <HelpCircle size={14} />
+          </button>
+
           {/* Filter */}
           <div className="relative ml-auto w-56">
             <Search className="absolute left-2 top-1.5 w-3.5 h-3.5" style={{ color: "var(--sol-base01)" }} />
             <Input
-              placeholder="Filter symbol, name, tag..."
+              ref={searchRef}
+              placeholder="Filter symbol, name, tag... (/)"
               value={filter}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilter(e.target.value)}
               className="pl-7 h-7 text-xs"
@@ -171,7 +269,7 @@ function App() {
         </div>
       </header>
 
-      {/* Table only */}
+      {/* Table */}
       <main className="mx-auto px-3 py-3" style={{ maxWidth: "1440px" }}>
         <AssetTable assets={filtered} getTightness={tightnessScore} />
       </main>

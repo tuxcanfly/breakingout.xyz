@@ -260,7 +260,7 @@ function computeTags(assets: ScreenerAsset[], market: MarketRegime, allAssets: S
   const top5 = pcts.length ? pcts.sort((a, b) => b - a)[Math.floor(pcts.length * 0.05)] || 20 : 20
   return assets.map((a) => {
     const t: string[] = []
-    if (market.naaim >= 70 && market.naaim <= 90) t.push("naaim-optimal")
+    if (market.naaim >= 70 && market.naaim <= 90) t.push("naaim")
     else if (market.naaim > 90) t.push("naaim-extreme")
     else if (market.naaim < 50) t.push("naaim-caution")
     const allUp = a.ma10 === "up" && a.ma20 === "up" && a.ma50 === "up" && a.ma200 === "up"
