@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/* Solarized Light color variables */
+:root {
+  --sol-base03: #002b36;
+  --sol-base02: #073642;
+  --sol-base01: #586e75;
+  --sol-base00: #657b83;
+  --sol-base0: #839496;
+  --sol-base1: #93a1a1;
+  --sol-base2: #eee8d5;
+  --sol-base3: #fdf6e3;
+  --sol-yellow: #b58900;
+  --sol-orange: #cb4b16;
+  --sol-red: #dc322f;
+  --sol-magenta: #d33682;
+  --sol-violet: #6c71c4;
+  --sol-blue: #268bd2;
+  --sol-cyan: #2aa198;
+  --sol-green: #859900;
+
+  --background: var(--sol-base3);
+  --foreground: var(--sol-base00);
+  --card: var(--sol-base2);
+  --card-foreground: var(--sol-base02);
+  --primary: var(--sol-blue);
+  --primary-foreground: var(--sol-base3);
+  --secondary: var(--sol-base2);
+  --secondary-foreground: var(--sol-base02);
+  --muted: var(--sol-base2);
+  --muted-foreground: var(--sol-base01);
+  --accent: var(--sol-cyan);
+  --accent-foreground: var(--sol-base3);
+  --destructive: var(--sol-red);
+  --destructive-foreground: var(--sol-base3);
+  --border: var(--sol-base1);
+  --input: var(--sol-base1);
+  --ring: var(--sol-blue);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+  }
+}
+
+/* Custom scrollbar for Solarized */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sol-base1); border-radius: 3px; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Stock row animations */
+.stock-row {
+  animation: fadeIn 0.25s ease-out forwards;
+  opacity: 0;
+}
+
+/* ── Chart Hover ─────────────────────────────────────────────────────── */
+
+.chart-hover-trigger {
+  position: relative;
+}
+
+/* Fixed-position popover — rendered at body level via createPortal */
+.chart-hover-popover {
+  background: var(--sol-base3);
+  border: 1px solid var(--sol-base2);
+  border-radius: 10px;
+  box-shadow:
+    0 16px 40px rgba(0,0,0,0.18),
+    0 4px 12px rgba(0,0,0,0.10);
+  overflow: hidden;
+  animation: chartPopIn 0.12s ease-out;
+}
+
+@keyframes chartPopIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Arrow */
+.chart-hover-arrow {
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--sol-base3);
+  border: 1px solid var(--sol-base2);
+  transform: translateX(-50%) rotate(45deg);
+  z-index: 1;
+}
+.chart-hover-arrow[data-placement="below"] {
+  top: -5px;
+  border-right: none;
+  border-bottom: none;
+}
+.chart-hover-arrow[data-placement="above"] {
+  bottom: -5px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Header */
+.chart-hover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px 12px 6px;
+  background: var(--sol-base2);
+  border-bottom: 1px solid var(--sol-base1);
+}
+
+.chart-hover-symbol {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sol-base02);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+.chart-hover-name {
+  font-size: 10px;
+  color: var(--sol-base01);
+  margin-top: 1px;
+  font-weight: 500;
+}
+
+.chart-hover-tag {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sol-green);
+  padding: 1px 5px;
+  background: rgba(133,153,0,0.10);
+  border: 1px solid rgba(133,153,0,0.20);
+  border-radius: 4px;
+}
+
+/* Body */
+.chart-hover-body {
+  background: #fff;
+  position: relative;
+}
+
+.chart-hover-img {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: fill;
+  background: #fff;
+}
+
+.chart-hover-fallback {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  color: var(--sol-base01);
+  font-size: 12px;
+  background: var(--sol-base3);
+}
+
+/* Footer */
+.chart-hover-footer {
+  padding: 6px 12px;
+  border-top: 1px solid var(--sol-base2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--sol-base2);
+}
+
+.chart-hover-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sol-blue);
+  text-decoration: none;
+}
+.chart-hover-link:hover {
+  color: var(--sol-cyan);
+  text-decoration: underline;
+}
