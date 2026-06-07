@@ -12,7 +12,7 @@ function getCached<T>(key: string): T | null {
 
 function setCache<T>(key: string, data: T): void { cache.set(key, { data, timestamp: Date.now() }) }
 
-// ── Stock universe ─────────────────────────────────────────────────────────
+// ── Stock universe + industry mapping ─────────────────────────────────────
 
 const TV_STOCKS = [
   // Semiconductors

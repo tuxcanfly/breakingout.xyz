@@ -109,9 +109,6 @@ export function AssetTable({ assets, getTightness }: Props) {
           <thead>
             <tr style={{ backgroundColor: "var(--sol-base2)", borderBottom: "1px solid var(--sol-base1)" }}>
               <SortHeader label="Sym" sortId="symbol" />
-              <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>Name</th>
-              <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>Type</th>
-              <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>Ind</th>
               <SortHeader label="Tight" sortId="tightness" />
               <SortHeader label="ADR" sortId="adrPercent" />
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>MAs</th>
@@ -154,34 +151,6 @@ export function AssetTable({ assets, getTightness }: Props) {
                       </Badge>
                     )}
                   </div>
-                </td>
-                <td
-                  className="px-2 py-1.5 truncate"
-                  style={{ color: "var(--sol-base01)", fontSize: "11px", maxWidth: "140px" }}
-                  title={asset.name}
-                >
-                  {asset.name}
-                </td>
-                <td className="px-2 py-1.5">
-                  <Badge
-                    className="px-1 py-0 font-medium"
-                    style={{
-                      backgroundColor: `${categoryColors[asset.category]}18`,
-                      color: categoryColors[asset.category],
-                      fontSize: "9px",
-                      height: "16px",
-                      borderRadius: "3px",
-                    }}
-                  >
-                    {asset.category.slice(0, 3)}
-                  </Badge>
-                </td>
-                <td
-                  className="px-2 py-1.5 truncate"
-                  style={{ color: "var(--sol-base01)", fontSize: "11px", maxWidth: "100px" }}
-                  title={asset.industry}
-                >
-                  {asset.industry}
                 </td>
                 <td className="px-2 py-1.5">
                   {getTightness ? <TightnessDot score={getTightness(asset)} /> : <span style={{ color: "var(--sol-base01)", fontSize: "11px" }}>--</span>}
