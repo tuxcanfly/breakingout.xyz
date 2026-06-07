@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { fetchDashboard } from "./lib/api"
 import type { DashboardData, AssetCategory, ScreenerAsset } from "./types"
 import { AssetTable } from "./components/AssetTable"
@@ -43,10 +43,24 @@ function App() {
     }
   }, [])
 
+  // Load on mount, then silently refresh if >30 min stale on tab focus
+  const lastLoadRef = useRef(0)
+
   useEffect(() => {
-    loadData()
-    const interval = setInterval(() => loadData(), 10 * 60 * 1000)
-    return () => clearInterval(interval)
+    loadData().then(() => { lastLoadRef.current = Date.now() })
+
+    const onFocus = () => {
+      const elapsed = Date.now() - lastLoadRef.current
+      if (elapsed > 30 * 60 * 1000) {
+        loadData().then(() => { lastLoadRef.current = Date.now() })
+      }
+    }
+    document.addEventListener("visibilitychange", onFocus)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      document.removeEventListener("visibilitychange", onFocus)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [loadData])
 
   if (loading && !data) {

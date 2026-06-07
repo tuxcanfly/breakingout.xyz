@@ -1,6 +1,5 @@
 import express from "express"
 import cors from "cors"
-import cron from "node-cron"
 import path from "path"
 import { fileURLToPath } from "url"
 import { fetchAllAssets } from "./feeds/scraper.js"
@@ -34,15 +33,7 @@ let dashboardData: DashboardData = {
 async function refreshData() {
   try {
     const data = await fetchAllAssets()
-    dashboardData = {
-      ...data,
-      lastUpdated: new Date().toISOString(),
-    }
-    const totalAssets =
-      data.stocks.length +
-      data.crypto.length +
-      data.etfs.length +
-      data.commodities.length
+    dashboardData = { ...data, lastUpdated: new Date().toISOString() }
     console.log(
       `Data refreshed: ${data.stocks.length} stocks, ${data.crypto.length} crypto, ${data.etfs.length} ETFs, ${data.commodities.length} commodities`
     )
@@ -51,29 +42,22 @@ async function refreshData() {
   }
 }
 
-// Refresh every 10 minutes
-cron.schedule("*/10 * * * *", refreshData)
+app.get("/api/dashboard", (_req, res) => res.json(dashboardData))
+app.get("/api/market", (_req, res) => res.json(dashboardData.market))
 
-app.get("/api/dashboard", (_req, res) => {
-  res.json(dashboardData)
-})
-
-app.get("/api/market", (_req, res) => {
-  res.json(dashboardData.market)
-})
-
-// Serve static frontend in production
+// Serve static frontend
 const distPath = path.resolve(__dirname, "../dist")
 app.use(express.static(distPath))
-// SPA fallback: return index.html for any non-file, non-API route
+
+// SPA fallback
 app.use((req, res, next) => {
   if (req.path.startsWith("/api") || req.path.includes(".")) return next()
   res.sendFile(path.join(distPath, "index.html"))
 })
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001
+const PORT = parseInt(process.env.PORT || "3001")
 
-// Wait for initial data before starting server
+// Fetch data on startup, then start serving
 await refreshData()
 
 app.listen(PORT, () => {

@@ -1,47 +1,42 @@
 # breakingout.xyz
 
-A momentum breakout screener bridging [Unusual Breakouts](https://www.unusualbreakouts.com/learn) research and [@0xaporia](https://x.com/0xaporia) insights.
+Momentum breakout screener bridging [Unusual Breakouts](https://www.unusualbreakouts.com/learn) and [@0xaporia](https://x.com/0xaporia).
 
 Live at **https://breakingout.xyz**
 
 ---
 
-## What it does
+## Tech
 
-- **Screener**: 200+ assets (stocks, crypto, ETFs, commodities) ranked by momentum, ADR, and MA alignment
-- **Tags**: Per-asset signal tags — `naaim-optimal`, `aleabitoreddit`, `momentum-leader`, `breakout`, `stage2`, `tight-base`
-- **Charts**: Hover any symbol for a live Finviz chart popup; click footer links for Yahoo Finance / Finviz
-- **Regime**: NAAIM exposure gauge updated every 10 minutes
-
-## Data sources
-
-| Source | What |
-|--------|------|
-| Unusual Breakouts | Stock screener, market regime (SPY MAs), NAAIM |
-| CoinGecko | Crypto prices & 30d/1y changes |
-| Yahoo Finance | ETF & commodity prices |
-| @0xaporia (Nitter) | Curated tweets on risk, momentum psychology, liquidity |
-
-## Tech stack
-
-- React 19 + TypeScript + Tailwind CSS v4 (Solarized Light)
-- Express + Puppeteer (server-side scraping)
-- Recharts (momentum bar chart)
-- Finviz embeds (chart popups)
+React 19 + TypeScript + Tailwind CSS v4 (Solarized Light)  
+Express + Puppeteer (screener scraper)  
+Recharts · Finviz embeds · NAAIM regime filter
 
 ## Local dev
 
 ```bash
 cd dashboard
 npm install
-npm run dev        # client + server
+npm run dev
 ```
 
-## Deploy
+## Deploy to Fly.io
 
 ```bash
-git push origin main
-railway up
+# Install Fly CLI
+curl -fsSL https://fly.io/install.sh | sh
+
+# Login
+fly auth login
+
+# Launch (first time)
+fly launch --no-deploy
+
+# Deploy
+fly deploy
+
+# Add domain
+fly certs add breakingout.xyz
 ```
 
-Custom domain: `breakingout.xyz` → Railway CNAME
+Then set a CNAME at your registrar pointing to `breakingout.fly.dev`.
