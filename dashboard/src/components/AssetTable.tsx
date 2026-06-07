@@ -160,9 +160,6 @@ export function AssetTable({ assets, getTightness }: Props) {
                   {asset.adrPercent.toFixed(1)}%
                 </td>
                 <td className="px-2 py-1.5">
-                  <PctCell value={asset.change24h ?? 0} />
-                </td>
-                <td className="px-2 py-1.5">
                   <div className="flex gap-0.5">
                     {[asset.ma10, asset.ma20, asset.ma50, asset.ma200].map(
                       (ma, j) => (
