@@ -15,7 +15,7 @@ interface Props {
   getTightness?: (a: ScreenerAsset) => number
 }
 
-type SortKey = "symbol" | "adrPercent" | "pct1M" | "pct3M" | "pct6M" | "pct1Y" | "price" | "tightness"
+type SortKey = "symbol" | "adrPercent" | "pct1M" | "pct3M" | "pct6M" | "pct1Y" | "price" | "tightness" | "change24h"
 type SortDir = "asc" | "desc"
 
 const categoryColors: Record<AssetCategory, string> = {
@@ -111,6 +111,7 @@ export function AssetTable({ assets, getTightness }: Props) {
               <SortHeader label="Sym" sortId="symbol" />
               <SortHeader label="Tight" sortId="tightness" />
               <SortHeader label="ADR" sortId="adrPercent" />
+              <SortHeader label="24h" sortId="change24h" />
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>MAs</th>
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>Tags</th>
               <SortHeader label="1M" sortId="pct1M" />
@@ -157,6 +158,9 @@ export function AssetTable({ assets, getTightness }: Props) {
                 </td>
                 <td className="px-2 py-1.5 font-medium tabular-nums" style={{ color: "var(--sol-base00)", fontSize: "11px" }}>
                   {asset.adrPercent.toFixed(1)}%
+                </td>
+                <td className="px-2 py-1.5">
+                  <PctCell value={asset.change24h ?? 0} />
                 </td>
                 <td className="px-2 py-1.5">
                   <div className="flex gap-0.5">

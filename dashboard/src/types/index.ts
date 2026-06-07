@@ -17,6 +17,7 @@ export interface ScreenerAsset {
   pct6M: number
   pct1Y: number
   price?: number
+  change24h?: number
   tags?: string[]
 }
 

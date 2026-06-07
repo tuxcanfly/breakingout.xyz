@@ -150,7 +150,7 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, name?: strin
     ma10: up(sma20), ma20: up(sma20), ma50: up(sma50), ma200: up(sma200),
     pct1M: parseFloat(pct1M.toFixed(1)), pct3M: parseFloat(pct3M.toFixed(1)),
     pct6M: parseFloat(pct6M.toFixed(1)), pct1Y: parseFloat(pct1Y.toFixed(1)),
-    price: close,
+    price: close, change24h: parseFloat(((v[12] as number) || 0).toFixed(1)),
   }
 }
 
