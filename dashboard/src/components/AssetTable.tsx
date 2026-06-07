@@ -111,9 +111,9 @@ export function AssetTable({ assets, getTightness }: Props) {
               <SortHeader label="Sym" sortId="symbol" />
               <SortHeader label="Tight" sortId="tightness" />
               <SortHeader label="ADR" sortId="adrPercent" />
-              <SortHeader label="24h" sortId="change24h" />
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>MAs</th>
               <th className="px-2 py-2 text-left font-semibold whitespace-nowrap" style={{ color: "var(--sol-base01)", fontSize: "11px" }}>Tags</th>
+              <SortHeader label="24h" sortId="change24h" />
               <SortHeader label="1M" sortId="pct1M" />
               <SortHeader label="3M" sortId="pct3M" />
               <SortHeader label="6M" sortId="pct6M" />
@@ -187,6 +187,9 @@ export function AssetTable({ assets, getTightness }: Props) {
                 </td>
                 <td className="px-2 py-1.5">
                   <TagList tags={asset.tags} />
+                </td>
+                <td className="px-2 py-1.5">
+                  <PctCell value={asset.change24h ?? 0} />
                 </td>
                 <td className="px-2 py-1.5">
                   <PctCell value={asset.pct1M} />
