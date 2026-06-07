@@ -29,7 +29,7 @@ const TV_STOCK_SYMBOLS = [
   "NASDAQ:TSLA","NASDAQ:RIVN","NASDAQ:NIO","NASDAQ:LI","NASDAQ:XPEV","NASDAQ:FSR","NASDAQ:LCID","NASDAQ:RIDE",
   "NASDAQ:MRNA","NASDAQ:BNTX","NASDAQ:CRSP","NASDAQ:NTLA","NASDAQ:EDIT","NASDAQ:BEAM","NASDAQ:ARKG",
   "NASDAQ:TTD","NASDAQ:APP","NASDAQ:ZS","NASDAQ:CROW","NASDAQ:PANW","NASDAQ:FTNT","NASDAQ:CHKP","NASDAQ:OKTA",
-  "NYSE:BRK.B","NYSE:SPY","NYSE:QQQ","NYSE:IWM","NYSE:DIA","NYSE:GLD","NYSE:SLV","NYSE:TLT","NYSE:EEM","NYSE:HYG",
+  "NYSE:BRK.B","AMEX:SPY","NYSE:QQQ","NYSE:IWM","NYSE:DIA","NYSE:GLD","NYSE:SLV","NYSE:TLT","NYSE:EEM","NYSE:HYG",
 ]
 
 // ── Stocks from TradingView scanner API ─────────────────────────────────────
@@ -116,7 +116,7 @@ async function fetchMarketRegime(): Promise<MarketRegime> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        symbols: { tickers: ["NYSE:SPY"], query: { types: [] } },
+        symbols: { tickers: ["AMEX:SPY"], query: { types: [] } },
         columns: ["close","SMA20","SMA50","SMA200","Perf.1M"],
         range: [0, 1],
       }),
@@ -247,7 +247,7 @@ async function fetchETFs(): Promise<ScreenerAsset[]> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        symbols: { tickers: ETF_UNIVERSE.map((e) => `NYSE:${e.symbol}`), query: { types: [] } },
+        symbols: { tickers: ETF_UNIVERSE.map((e) => `AMEX:${e.symbol}`), query: { types: [] } },
         columns: ["name","close","volume","Perf.1M","Perf.3M","Perf.6M","Perf.Y","Volatility.D","SMA50","SMA200"],
         range: [0, ETF_UNIVERSE.length],
       }),
@@ -313,7 +313,7 @@ async function fetchCommodities(): Promise<ScreenerAsset[]> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        symbols: { tickers: COMMODITY_UNIVERSE.map((c) => `NYSE:${c.symbol}`), query: { types: [] } },
+        symbols: { tickers: COMMODITY_UNIVERSE.map((c) => `AMEX:${c.symbol}`), query: { types: [] } },
         columns: ["name","close","volume","Perf.1M","Perf.3M","Perf.6M","Perf.Y","Volatility.D","SMA50","SMA200"],
         range: [0, COMMODITY_UNIVERSE.length],
       }),
