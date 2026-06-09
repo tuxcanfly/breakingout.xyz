@@ -1,3 +1,5 @@
+import { config as dotenvConfig } from "dotenv"
+import { existsSync } from "fs"
 import express from "express"
 import cors from "cors"
 import path from "path"
@@ -6,6 +8,10 @@ import { fetchAllAssets } from "./feeds/scraper.js"
 import { fetchTweetsForSymbol } from "./feeds/nitter.js"
 import { generateInsight } from "./feeds/insights.js"
 import type { DashboardData, ScreenerAsset } from "./types.js"
+
+if (existsSync("/etc/secrets/.env")) {
+  dotenvConfig({ path: "/etc/secrets/.env" })
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 

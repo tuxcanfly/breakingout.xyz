@@ -1,7 +1,6 @@
 import type { ScreenerAsset } from "../types.js"
 import { fetchTweetsForSymbol } from "./nitter.js"
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 const CACHE_TTL = 60 * 60 * 1000
 const insightCache = new Map<string, { text: string; timestamp: number }>()
@@ -40,7 +39,8 @@ export async function generateInsight(asset: ScreenerAsset): Promise<string> {
     return cached.text
   }
 
-  if (!DEEPSEEK_API_KEY) {
+  const apiKey = process.env.DEEPSEEK_API_KEY
+  if (!apiKey) {
     return "AI insights are unavailable. Set DEEPSEEK_API_KEY to enable."
   }
 
@@ -56,7 +56,7 @@ export async function generateInsight(asset: ScreenerAsset): Promise<string> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: "deepseek-chat",
