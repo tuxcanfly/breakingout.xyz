@@ -8,7 +8,6 @@ import { MarketBar } from "./components/MarketBar"
 import { Input } from "./components/ui/input"
 import {
   Search,
-  LineChart,
   HelpCircle,
   X,
   RefreshCw,
@@ -170,13 +169,29 @@ function App() {
           className="sticky top-0 z-50 border-b"
           style={{ backgroundColor: "var(--sol-base3)", borderColor: "var(--sol-base2)" }}
         >
-          <div className="mx-auto px-3 py-2 flex items-center gap-4" style={{ maxWidth: "1440px" }}>
-            <div className="p-1.5 rounded-md" style={{ backgroundColor: "var(--sol-blue)" }}>
-              <LineChart className="w-4 h-4 text-white" />
+          <div className="mx-auto px-4" style={{ maxWidth: "1440px" }}>
+            <div className="flex items-center gap-2.5 py-2.5">
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-lg font-bold text-white"
+                style={{
+                  backgroundColor: "var(--sol-blue)",
+                  fontSize: "13px",
+                  fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                }}
+              >
+                BO
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-bold" style={{ color: "var(--sol-base02)", fontSize: "15px" }}>
+                    Breaking Out
+                  </span>
+                  <span style={{ color: "var(--sol-base1)", fontSize: "13px", fontWeight: 500 }}>
+                    .xyz
+                  </span>
+                </div>
+              </div>
             </div>
-            <h1 className="font-bold" style={{ color: "var(--sol-base02)", fontSize: "14px" }}>
-              breakingout.xyz
-            </h1>
           </div>
         </header>
         <main className="mx-auto px-3 py-3" style={{ maxWidth: "1440px" }}>
@@ -341,27 +356,117 @@ function App() {
         className="sticky top-0 z-50 border-b"
         style={{ backgroundColor: "var(--sol-base3)", borderColor: "var(--sol-base2)" }}
       >
-        <div className="mx-auto px-3 py-2 flex items-center gap-3" style={{ maxWidth: "1440px" }}>
-          {/* Brand */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="p-1.5 rounded-md" style={{ backgroundColor: "var(--sol-blue)" }}>
-              <LineChart className="w-4 h-4 text-white" />
+        <div className="mx-auto px-4" style={{ maxWidth: "1440px" }}>
+          {/* Top row: brand + controls */}
+          <div className="flex items-center justify-between py-2.5">
+            {/* Brand */}
+            <div className="flex items-center gap-2.5">
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-lg font-bold text-white"
+                style={{
+                  backgroundColor: "var(--sol-blue)",
+                  fontSize: "13px",
+                  fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                BO
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span
+                    className="font-bold"
+                    style={{
+                      color: "var(--sol-base02)",
+                      fontSize: "15px",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    Breaking Out
+                  </span>
+                  <span
+                    style={{
+                      color: "var(--sol-base1)",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    .xyz
+                  </span>
+                </div>
+                <div
+                  style={{
+                    color: "var(--sol-base01)",
+                    fontSize: "10px",
+                    fontWeight: 500,
+                    letterSpacing: "0.03em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Momentum Breakout Screener
+                </div>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold" style={{ color: "var(--sol-base02)", fontSize: "14px", lineHeight: 1.2 }}>
-                breakingout.xyz
-              </h1>
-              <p style={{ color: "var(--sol-base01)", fontSize: "10px" }}>
-                {new Date(data.lastUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                {stale && (
-                  <span style={{ color: "var(--sol-red)", marginLeft: "6px" }}>· stale</span>
-                )}
-              </p>
+
+            {/* Controls */}
+            <div className="flex items-center gap-2">
+              {/* Search */}
+              <div className="relative">
+                <Search
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+                  style={{ color: "var(--sol-base01)" }}
+                />
+                <Input
+                  ref={searchRef}
+                  placeholder="Filter symbol, name, tag... (/)"
+                  value={filter}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    setFilter(e.target.value)
+                    setSectorFilter(null)
+                  }}
+                  className="pl-8 h-8 text-xs w-64"
+                />
+              </div>
+
+              {/* Utility buttons */}
+              <div
+                className="flex items-center gap-0.5 rounded-lg border p-0.5"
+                style={{ borderColor: "var(--sol-base2)", backgroundColor: "var(--sol-base2)" }}
+              >
+                <button
+                  onClick={() => loadData()}
+                  disabled={loading}
+                  className="flex items-center justify-center w-7 h-7 rounded-md cursor-pointer disabled:opacity-50 transition-colors"
+                  style={{ color: "var(--sol-base01)" }}
+                  title="Refresh data"
+                >
+                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                </button>
+                <button
+                  onClick={() => setDense((v) => !v)}
+                  className="flex items-center justify-center w-7 h-7 rounded-md cursor-pointer transition-colors"
+                  style={{
+                    color: dense ? "var(--sol-blue)" : "var(--sol-base01)",
+                    backgroundColor: dense ? "var(--sol-base3)" : "transparent",
+                  }}
+                  title={dense ? "Compact view" : "Normal view"}
+                >
+                  {dense ? <LayoutGrid size={14} /> : <LayoutList size={14} />}
+                </button>
+                <button
+                  onClick={() => setHelpOpen(true)}
+                  className="flex items-center justify-center w-7 h-7 rounded-md cursor-pointer transition-colors"
+                  style={{ color: "var(--sol-base01)" }}
+                  title="Help (?)"
+                >
+                  <HelpCircle size={14} />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Category tabs */}
-          <div className="flex gap-1">
+          {/* Bottom row: tabs */}
+          <div className="flex items-center gap-1 pb-2">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -369,18 +474,21 @@ function App() {
                   setActiveTab(tab.id)
                   setSectorFilter(null)
                 }}
-                className="px-2 py-0.5 rounded font-medium transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer"
                 style={{
                   backgroundColor: activeTab === tab.id ? "var(--sol-blue)" : "transparent",
                   color: activeTab === tab.id ? "white" : "var(--sol-base01)",
-                  fontSize: "11px",
+                  fontSize: "12px",
+                  boxShadow: activeTab === tab.id ? "0 1px 3px rgba(38,139,210,0.3)" : "none",
                 }}
               >
                 {tab.label}
                 <span
-                  className="ml-0.5 px-1 py-0 rounded-full"
+                  className="inline-flex items-center justify-center px-1.5 py-0 rounded-full tabular-nums"
                   style={{
-                    fontSize: "9px",
+                    fontSize: "10px",
+                    minWidth: 18,
+                    height: 16,
                     backgroundColor: activeTab === tab.id ? "rgba(255,255,255,0.2)" : "var(--sol-base2)",
                     color: activeTab === tab.id ? "white" : "var(--sol-base00)",
                   }}
@@ -389,59 +497,19 @@ function App() {
                 </span>
               </button>
             ))}
-          </div>
-
-          {/* Refresh */}
-          <button
-            onClick={() => loadData()}
-            disabled={loading}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded font-medium cursor-pointer disabled:opacity-50"
-            style={{ color: "var(--sol-base01)", fontSize: "11px" }}
-            title="Refresh data"
-          >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          </button>
-
-          {/* Dense toggle */}
-          <button
-            onClick={() => setDense((v) => !v)}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded font-medium cursor-pointer"
-            style={{
-              color: dense ? "var(--sol-blue)" : "var(--sol-base01)",
-              fontSize: "11px",
-              backgroundColor: dense ? "rgba(38,139,210,0.10)" : "transparent",
-            }}
-            title={dense ? "Compact view" : "Normal view"}
-          >
-            {dense ? <LayoutGrid size={14} /> : <LayoutList size={14} />}
-          </button>
-
-          {/* Help */}
-          <button
-            onClick={() => setHelpOpen(true)}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded font-medium cursor-pointer"
-            style={{ color: "var(--sol-base01)", fontSize: "11px" }}
-            title="Help (?)"
-          >
-            <HelpCircle size={14} />
-          </button>
-
-          {/* Filter */}
-          <div className="relative ml-auto w-56">
-            <Search
-              className="absolute left-2 top-1.5 w-3.5 h-3.5"
-              style={{ color: "var(--sol-base01)" }}
-            />
-            <Input
-              ref={searchRef}
-              placeholder="Filter symbol, name, tag... (/)"
-              value={filter}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                setFilter(e.target.value)
-                setSectorFilter(null)
-              }}
-              className="pl-7 h-7 text-xs"
-            />
+            {stale && (
+              <span
+                className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-md font-medium"
+                style={{
+                  fontSize: "10px",
+                  color: "var(--sol-red)",
+                  backgroundColor: "rgba(220,50,47,0.08)",
+                  border: "1px solid rgba(220,50,47,0.15)",
+                }}
+              >
+                Cached data
+              </span>
+            )}
           </div>
         </div>
       </header>
