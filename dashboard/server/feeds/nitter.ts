@@ -149,6 +149,22 @@ export async function fetchAshenbrennerMentions(): Promise<Set<string>> {
   return fetchUserMentions("aschenbrenner")
 }
 
+export async function fetchRealSimpleArielMentions(): Promise<Set<string>> {
+  return fetchUserMentions("realsimpleariel")
+}
+
+export async function fetchStamatoudismMentions(): Promise<Set<string>> {
+  return fetchUserMentions("stamatoudism")
+}
+
+export async function fetchJfsrevMentions(): Promise<Set<string>> {
+  return fetchUserMentions("jfsrev")
+}
+
+export async function fetchAsymTradingMentions(): Promise<Set<string>> {
+  return fetchUserMentions("asymtrading")
+}
+
 export async function fetchTweetsForSymbol(symbol: string): Promise<NitterResult> {
   const cacheKey = `tweets:${symbol.toUpperCase()}`
   const cached = tweetCache.get(cacheKey)

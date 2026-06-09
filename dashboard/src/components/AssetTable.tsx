@@ -536,12 +536,20 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   avoid: { bg: "rgba(220,50,47,0.12)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
   aleabitoreddit: { bg: "rgba(211,54,130,0.10)", color: "#d33682", border: "rgba(211,54,130,0.25)" },
   aschenbrenner: { bg: "rgba(42,161,152,0.10)", color: "#2aa198", border: "rgba(42,161,152,0.25)" },
+  realsimpleariel: { bg: "rgba(38,139,210,0.10)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
+  stamatoudism: { bg: "rgba(108,113,196,0.10)", color: "#6c71c4", border: "rgba(108,113,196,0.25)" },
+  jfsrev: { bg: "rgba(203,75,22,0.10)", color: "#cb4b16", border: "rgba(203,75,22,0.25)" },
+  asymtrading: { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
   xstock: { bg: "rgba(108,113,196,0.12)", color: "#6c71c4", border: "rgba(108,113,196,0.25)" },
 }
 
 const TAG_LINKS: Record<string, string> = {
   aleabitoreddit: "https://x.com/aleabitoreddit",
   aschenbrenner: "https://x.com/leopoldasch",
+  realsimpleariel: "https://x.com/realsimpleariel",
+  stamatoudism: "https://x.com/stamatoudism",
+  jfsrev: "https://x.com/jfsrev",
+  asymtrading: "https://x.com/asymtrading",
 }
 
 function TagList({ tags }: { tags?: string[] }) {

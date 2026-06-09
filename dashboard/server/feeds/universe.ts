@@ -55,16 +55,21 @@ export const SP500_STOCKS = [
 
 // Additional liquid non-S&P names for broader coverage
 export const EXTRA_STOCKS = [
-  "AAOI","ABNB","AEHR","AI","ALAB","AMPG","AMSC","AOSL","ARM","ASX",
-  "ASTS","ASYS","AXSM","AXTI","BDC","BKKT","BTBT","CAVA","CAN","CELH",
+  "AAOI","ABNB","ACHR","AEHR","AFRM","AI","ALAB","AMC","AMPG","AMSC",
+  "ANF","AOSL","ARM","ASX","ASTS","ASYS","AXSM","AXTI","BB","BBAI",
+  "BDC","BKKT","BTBT","BWXT","CAVA","CAN","CCJ","CELH",
   "CERE","CIFR","CLSK","CLS","CORZ","COUR","CRSP","CRWV","CZR","DJT",
-  "DKNG","ENPH","EOSE","FCEL","FN","FSLR","GFS","GLBE","HIVE","HOOD",
-  "HUT","HYLN","INHD","IONQ","IPWR","IREN","JBL","LCID","LFUS","MARA",
-  "MDB","MRNA","MSTR","NBIS","NKLA","NVTS","OKLO","OKTA","ONDS","ON",
-  "OPEN","PLUG","POET","POWI","QBTS","RBLX","RDDT","RELL","RGTI","RIOT",
-  "RIVN","ROKU","RXRX","SEDG","SIVE","SLNH","SNAP","SOI","SOUN","SPOT",
-  "SQ","TEAM","TOST","TSEM","TWLO","UPST","VKTX","VFS","VICR","VIVO",
-  "VSH","WOLF","WULF","XFAB","YSS","ZS",
+  "DKNG","DNN","DUOL","ELF","ENPH","EOSE","FCEL","FN","FSLR",
+  "GFS","GLBE","GME","HIMS","HIVE","HOOD",
+  "HUT","HYLN","INHD","IONQ","IOT","IPWR","IREN","JBL","JOBY",
+  "KTOS","LCID","LEU","LFUS","LUNR",
+  "MARA","MDB","MEDP","MOD","MRNA","MSTR","NBIS","NET","NKLA","NU",
+  "NVTS","OKLO","OKTA","ONDS","ON",
+  "OPEN","PLUG","POET","POWI","QBTS","QUBT","RBLX","RDDT","RELL","RGTI","RIOT",
+  "RIVN","RKLB","ROKU","RXRX","SEDG","SHOP","SIVE","SLNH","SMR",
+  "SNAP","SOFI","SOI","SOUN","SPOT",
+  "SQ","TEAM","TOST","TSEM","TWLO","U","UEC","UPST","VKTX","VFS","VICR","VIVO",
+  "VSH","WING","WOLF","WULF","XFAB","YSS","ZS",
 ]
 
 // ── ETF universe ──────────────────────────────────────────────────────────

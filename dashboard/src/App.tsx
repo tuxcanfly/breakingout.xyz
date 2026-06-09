@@ -83,6 +83,14 @@ const HELP_SECTIONS = [
         <ExternalLink href="https://x.com/aleabitoreddit">@aleabitoreddit</ExternalLink>
         {"\n"}• aschenbrenner — mentioned by{" "}
         <ExternalLink href="https://x.com/leopoldasch">@leopoldasch</ExternalLink>
+        {"\n"}• realsimpleariel — mentioned by{" "}
+        <ExternalLink href="https://x.com/realsimpleariel">@RealSimpleAriel</ExternalLink>
+        {"\n"}• stamatoudism — mentioned by{" "}
+        <ExternalLink href="https://x.com/stamatoudism">@stamatoudism</ExternalLink>
+        {"\n"}• jfsrev — mentioned by{" "}
+        <ExternalLink href="https://x.com/jfsrev">@jfsrev</ExternalLink>
+        {"\n"}• asymtrading — mentioned by{" "}
+        <ExternalLink href="https://x.com/asymtrading">@AsymTrading</ExternalLink>
       </>
     ),
   },

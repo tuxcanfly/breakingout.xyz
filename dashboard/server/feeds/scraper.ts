@@ -2,7 +2,7 @@ import type { ScreenerAsset, MarketRegime, AssetCategory } from "../types.js"
 import { classifyAsset } from "./taxonomy.js"
 import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
 import { XSTOCK_PRODUCTS } from "./xstocks.js"
-import { fetchAleabitoMentions, fetchAshenbrennerMentions } from "./nitter.js"
+import { fetchAleabitoMentions, fetchAshenbrennerMentions, fetchRealSimpleArielMentions, fetchStamatoudismMentions, fetchJfsrevMentions, fetchAsymTradingMentions } from "./nitter.js"
 import { SP500_STOCKS, EXTRA_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
 
 interface CacheEntry<T> { data: T; timestamp: number }
@@ -384,7 +384,11 @@ function computeTags(
   market: MarketRegime,
   allAssets: ScreenerAsset[],
   aleabitoMentions: Set<string>,
-  aschenbrennerMentions: Set<string>
+  aschenbrennerMentions: Set<string>,
+  realsimplearielMentions: Set<string>,
+  stamatoudismMentions: Set<string>,
+  jfsrevMentions: Set<string>,
+  asymtradingMentions: Set<string>
 ): ScreenerAsset[] {
   const pcts = allAssets.map((a) => a.pct1M).filter((p) => !isNaN(p))
   const top5 = pcts.length ? pcts.sort((a, b) => b - a)[Math.floor(pcts.length * 0.05)] || 20 : 20
@@ -413,6 +417,10 @@ function computeTags(
     // Mention tags based on actual X accounts
     if (aleabitoMentions.has(a.symbol)) t.push("aleabitoreddit")
     if (aschenbrennerMentions.has(a.symbol)) t.push("aschenbrenner")
+    if (realsimplearielMentions.has(a.symbol)) t.push("realsimpleariel")
+    if (stamatoudismMentions.has(a.symbol)) t.push("stamatoudism")
+    if (jfsrevMentions.has(a.symbol)) t.push("jfsrev")
+    if (asymtradingMentions.has(a.symbol)) t.push("asymtrading")
     if (a.tokenSymbol) t.push("xstock")
     return { ...a, tags: t }
   })
@@ -421,8 +429,8 @@ function computeTags(
 // ── Unified fetch ──────────────────────────────────────────────────────────
 
 export async function fetchAllAssets() {
-  const [{ stocks, xstocks }, crypto, etfs, commodities, market, aleabitoMentions, aschenbrennerMentions] = await Promise.all([
-    fetchStocks(), fetchCrypto(), fetchETFs(), fetchCommodities(), fetchMarketRegime(), fetchAleabitoMentions(), fetchAshenbrennerMentions(),
+  const [{ stocks, xstocks }, crypto, etfs, commodities, market, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions] = await Promise.all([
+    fetchStocks(), fetchCrypto(), fetchETFs(), fetchCommodities(), fetchMarketRegime(), fetchAleabitoMentions(), fetchAshenbrennerMentions(), fetchRealSimpleArielMentions(), fetchStamatoudismMentions(), fetchJfsrevMentions(), fetchAsymTradingMentions(),
   ])
 
   const signaled = computeSignals([...stocks, ...crypto, ...etfs, ...commodities])
@@ -431,11 +439,11 @@ export async function fetchAllAssets() {
   const all = signaled
 
   return {
-    stocks: computeTags(pick(stocks), market, all, aleabitoMentions, aschenbrennerMentions),
-    xstocks: computeTags(pick(xstocks), market, all, aleabitoMentions, aschenbrennerMentions),
-    crypto: computeTags(pick(crypto), market, all, aleabitoMentions, aschenbrennerMentions),
-    etfs: computeTags(pick(etfs), market, all, aleabitoMentions, aschenbrennerMentions),
-    commodities: computeTags(pick(commodities), market, all, aleabitoMentions, aschenbrennerMentions),
+    stocks: computeTags(pick(stocks), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
+    xstocks: computeTags(pick(xstocks), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
+    crypto: computeTags(pick(crypto), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
+    etfs: computeTags(pick(etfs), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
+    commodities: computeTags(pick(commodities), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
     market,
   }
 }
