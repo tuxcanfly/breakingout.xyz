@@ -55,15 +55,16 @@ export const SP500_STOCKS = [
 
 // Additional liquid non-S&P names for broader coverage
 export const EXTRA_STOCKS = [
-  "AAOI","ABNB","AEHR","AI","ALAB","AMSC","AOSL","ARM","ASX","ASTS",
-  "ASYS","AXSM","AXTI","BDC","BKKT","CAVA","CELH","CERE","CIFR","CLSK",
-  "CLS","COUR","CRSP","CRWV","CZR","DKNG","ENPH","EOSE","FCEL","FN",
-  "FSLR","GFS","GLBE","HOOD","HUT","HYLN","INHD","IONQ","IPWR","IREN",
-  "JBL","LFUS","MARA","MDB","MRNA","MSTR","NBIS","NVTS","OKLO","OKTA",
-  "ONDS","ON","OPEN","PLUG","POET","POWI","QBTS","RDDT","RELL","RGTI",
+  "AAOI","ABNB","AEHR","AI","ALAB","AMPG","AMSC","AOSL","ARM","ASX",
+  "ASTS","ASYS","AXSM","AXTI","BDC","BKKT","BTBT","CAVA","CAN","CELH",
+  "CERE","CIFR","CLSK","CLS","CORZ","COUR","CRSP","CRWV","CZR","DJT",
+  "DKNG","ENPH","EOSE","FCEL","FN","FSLR","GFS","GLBE","HIVE","HOOD",
+  "HUT","HYLN","INHD","IONQ","IPWR","IREN","JBL","LCID","LFUS","MARA",
+  "MDB","MRNA","MSTR","NBIS","NKLA","NVTS","OKLO","OKTA","ONDS","ON",
+  "OPEN","PLUG","POET","POWI","QBTS","RBLX","RDDT","RELL","RGTI","RIOT",
   "RIVN","ROKU","RXRX","SEDG","SIVE","SLNH","SNAP","SOI","SOUN","SPOT",
-  "SQ","TEAM","TOST","TSEM","TWLO","UPST","VKTX","VFS","VICR","VSH",
-  "WOLF","XFAB","YSS","ZS",
+  "SQ","TEAM","TOST","TSEM","TWLO","UPST","VKTX","VFS","VICR","VIVO",
+  "VSH","WOLF","WULF","XFAB","YSS","ZS",
 ]
 
 // ── ETF universe ──────────────────────────────────────────────────────────
