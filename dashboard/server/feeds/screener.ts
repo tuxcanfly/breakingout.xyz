@@ -31,58 +31,6 @@ function parseMarketFromHTML(text: string): MarketRegime {
   return market
 }
 
-function parseStocksFromText(text: string): ScreenerStock[] {
-  const stocks: ScreenerStock[] = []
-
-  // Pattern: find rows in the markdown-like table
-  // Each row looks like: | AAOI | Semiconductors | 2.16B | | 14.05 | ▼ | ▼ | ▲ | ▲ | 12.35 | 77.51 | 592.22 | 934.48 |
-  const lines = text.split("\n")
-  let inTable = false
-
-  for (const line of lines) {
-    if (line.includes("| symbol | industry |")) {
-      inTable = true
-      continue
-    }
-    if (!inTable) continue
-    if (line.trim() === "" || line.includes("|---")) continue
-    if (line.includes("We use cookies")) break
-
-    const cells = line
-      .split("|")
-      .map((c) => c.trim())
-      .filter(Boolean)
-
-    if (cells.length < 12) continue
-
-    const symbol = cells[0].trim()
-    // Skip if not a valid ticker
-    if (!/^[A-Z]{1,5}$/.test(symbol)) continue
-
-    const maMap = (v: string): "up" | "down" =>
-      v.trim() === "▲" || v.trim().includes("▲") ? "up" : "down"
-
-    const stock: ScreenerStock = {
-      symbol,
-      industry: cells[1]?.trim() || "",
-      avgVolume: cells[2]?.trim() || "",
-      tightness: cells[3]?.trim() || "",
-      adrPercent: parseFloat(cells[4]?.trim()) || 0,
-      ma10: maMap(cells[5] || ""),
-      ma20: maMap(cells[6] || ""),
-      ma50: maMap(cells[7] || ""),
-      ma200: maMap(cells[8] || ""),
-      pct1M: parseFloat(cells[9]?.trim().replace(/,/g, "")) || 0,
-      pct3M: parseFloat(cells[10]?.trim().replace(/,/g, "")) || 0,
-      pct6M: parseFloat(cells[11]?.trim().replace(/,/g, "")) || 0,
-      pct1Y: parseFloat(cells[12]?.trim().replace(/,/g, "")) || 0,
-    }
-    stocks.push(stock)
-  }
-
-  return stocks
-}
-
 export async function fetchScreenerData(): Promise<{
   stocks: ScreenerStock[]
   market: MarketRegime

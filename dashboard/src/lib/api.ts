@@ -1,4 +1,4 @@
-import type { DashboardData, MarketRegime, ScreenerAsset } from "../types"
+import type { DashboardData, MarketRegime, NitterResult } from "../types"
 
 const BASE_URL = "/api"
 
@@ -11,5 +11,11 @@ export async function fetchDashboard(): Promise<DashboardData> {
 export async function fetchMarket(): Promise<MarketRegime> {
   const res = await fetch(`${BASE_URL}/market`)
   if (!res.ok) throw new Error("Failed to fetch market")
+  return res.json()
+}
+
+export async function fetchTweets(symbol: string): Promise<NitterResult> {
+  const res = await fetch(`${BASE_URL}/tweets?symbol=${encodeURIComponent(symbol)}`)
+  if (!res.ok) throw new Error("Failed to fetch tweets")
   return res.json()
 }

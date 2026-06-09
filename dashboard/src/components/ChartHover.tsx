@@ -1,6 +1,8 @@
 import { memo, useRef, useState, useEffect, useCallback } from "react"
 import { createPortal } from "react-dom"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, MessageCircle } from "lucide-react"
+import { fetchTweets } from "../lib/api"
+import type { NitterTweet } from "../types"
 
 interface ChartHoverProps {
   symbol: string
@@ -17,6 +19,8 @@ interface Pos {
 export const ChartHover = memo(function ChartHover({ symbol, name, children }: ChartHoverProps) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<Pos>({ top: 0, left: 0, placement: "below" })
+  const [tweets, setTweets] = useState<NitterTweet[]>([])
+  const [tweetLoading, setTweetLoading] = useState(false)
   const triggerRef = useRef<HTMLSpanElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -27,22 +31,18 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
     const el = triggerRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    const popW = 360
-    const popH = 280
+    const popW = 380
+    const popH = 420
     const margin = 10
 
     const spaceBelow = window.innerHeight - rect.bottom
     const spaceAbove = rect.top
     const placement = spaceBelow < popH + margin && spaceAbove > spaceBelow ? "above" : "below"
 
-    // position:fixed is viewport-relative. getBoundingClientRect()
-    // already returns viewport coords. Do NOT add scrollX/Y.
-    const top = placement === "below"
-      ? rect.bottom + margin
-      : rect.top - popH - margin
+    const top =
+      placement === "below" ? rect.bottom + margin : rect.top - popH - margin
 
     let left = rect.left + rect.width / 2 - popW / 2
-    // Clamp to viewport
     left = Math.max(margin, Math.min(left, window.innerWidth - popW - margin))
 
     setPos({ top, left, placement })
@@ -52,6 +52,14 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
     if (timerRef.current) clearTimeout(timerRef.current)
     computePos()
     setOpen(true)
+    // Lazy load tweets
+    if (tweets.length === 0 && !tweetLoading) {
+      setTweetLoading(true)
+      fetchTweets(symbol)
+        .then((res) => setTweets(res.tweets))
+        .catch(() => setTweets([]))
+        .finally(() => setTweetLoading(false))
+    }
   }
 
   const hide = () => {
@@ -62,7 +70,6 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
     if (timerRef.current) clearTimeout(timerRef.current)
   }
 
-  // Hide popover on scroll or resize — the trigger may have moved
   useEffect(() => {
     if (!open) return
     const onHide = () => setOpen(false)
@@ -74,7 +81,9 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
     }
   }, [open])
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+  }, [])
 
   const popover = (
     <div
@@ -83,7 +92,7 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
         position: "fixed",
         top: pos.top,
         left: pos.left,
-        width: 360,
+        width: 380,
         zIndex: 9999,
       }}
       onMouseEnter={keep}
@@ -108,7 +117,9 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
           onError={(e) => {
             const img = e.target as HTMLImageElement
             img.style.display = "none"
-            const fallback = img.parentElement?.querySelector(".chart-hover-fallback") as HTMLElement | null
+            const fallback = img.parentElement?.querySelector(
+              ".chart-hover-fallback"
+            ) as HTMLElement | null
             if (fallback) fallback.style.display = "flex"
           }}
         />
@@ -117,13 +128,67 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
         </div>
       </div>
 
-      <div className="chart-hover-footer">
-        <a
-          href={yahooUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="chart-hover-link"
+      {/* Tweet panel */}
+      <div
+        className="chart-hover-tweets"
+        style={{
+          borderTop: "1px solid var(--sol-base2)",
+          backgroundColor: "var(--sol-base2)",
+          maxHeight: 120,
+          overflowY: "auto",
+        }}
+      >
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5"
+          style={{ fontSize: "10px", fontWeight: 600, color: "var(--sol-base01)", textTransform: "uppercase", letterSpacing: "0.04em" }}
         >
+          <MessageCircle size={10} />
+          Recent tweets
+        </div>
+        {tweetLoading ? (
+          <div className="px-3 py-2" style={{ fontSize: "11px", color: "var(--sol-base01)" }}>
+            Loading...
+          </div>
+        ) : tweets.length === 0 ? (
+          <div className="px-3 py-2" style={{ fontSize: "11px", color: "var(--sol-base01)" }}>
+            No recent tweets found
+          </div>
+        ) : (
+          tweets.slice(0, 3).map((t, i) => (
+            <a
+              key={i}
+              href={t.link || `https://x.com/search?q=%24${symbol}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-3 py-1.5 transition-colors"
+              style={{
+                borderTop: i > 0 ? "1px solid rgba(147,161,161,0.12)" : "none",
+                textDecoration: "none",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = "var(--sol-base3)"
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"
+              }}
+            >
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--sol-base02)" }}>
+                {t.author}
+              </div>
+              <div
+                className="truncate"
+                style={{ fontSize: "11px", color: "var(--sol-base01)", lineHeight: 1.4 }}
+                title={t.text}
+              >
+                {t.text}
+              </div>
+            </a>
+          ))
+        )}
+      </div>
+
+      <div className="chart-hover-footer">
+        <a href={yahooUrl} target="_blank" rel="noopener noreferrer" className="chart-hover-link">
           <ExternalLink size={10} />
           Yahoo
         </a>
@@ -141,12 +206,7 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
 
   return (
     <>
-      <span
-        ref={triggerRef}
-        className="chart-hover-trigger"
-        onMouseEnter={show}
-        onMouseLeave={hide}
-      >
+      <span ref={triggerRef} className="chart-hover-trigger" onMouseEnter={show} onMouseLeave={hide}>
         {children}
       </span>
       {open && createPortal(popover, document.body)}

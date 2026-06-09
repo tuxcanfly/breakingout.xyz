@@ -1,10 +1,14 @@
-export type AssetCategory = "stocks" | "crypto" | "etfs" | "commodities"
+export type AssetCategory = "stocks" | "xstocks" | "crypto" | "etfs" | "commodities"
+
+export type TrendState = "uptrend" | "downtrend" | "transition" | "chop"
 
 export interface ScreenerAsset {
   symbol: string
   name: string
   category: AssetCategory
   industry: string
+  sector: string
+  subsector?: string
   avgVolume: string
   tightness: string
   adrPercent: number
@@ -18,6 +22,15 @@ export interface ScreenerAsset {
   pct1Y: number
   price?: number
   change24h?: number
+  underlyingSymbol?: string
+  tokenSymbol?: string
+  venue?: string
+  momentumRank?: number
+  categoryRank?: number
+  sectorRank?: number
+  setupScore?: number
+  riskScore?: number
+  trendState?: TrendState
   tags?: string[]
 }
 
@@ -33,11 +46,31 @@ export interface MarketRegime {
   gold200SMA?: "above" | "below"
 }
 
+export interface DashboardMeta {
+  stale?: boolean
+  refreshing?: boolean
+  error?: string | null
+}
+
 export interface DashboardData {
   stocks: ScreenerAsset[]
+  xstocks: ScreenerAsset[]
   crypto: ScreenerAsset[]
   etfs: ScreenerAsset[]
   commodities: ScreenerAsset[]
   market: MarketRegime
   lastUpdated: string
+  _meta?: DashboardMeta
+}
+
+export interface NitterTweet {
+  author: string
+  text: string
+  date: string
+  link: string
+}
+
+export interface NitterResult {
+  count: number
+  tweets: NitterTweet[]
 }

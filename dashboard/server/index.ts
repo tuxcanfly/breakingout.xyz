@@ -3,6 +3,7 @@ import cors from "cors"
 import path from "path"
 import { fileURLToPath } from "url"
 import { fetchAllAssets } from "./feeds/scraper.js"
+import { fetchTweetsForSymbol } from "./feeds/nitter.js"
 import type { DashboardData } from "./types.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -13,6 +14,7 @@ app.use(express.json())
 
 let dashboardData: DashboardData = {
   stocks: [],
+  xstocks: [],
   crypto: [],
   etfs: [],
   commodities: [],
@@ -30,27 +32,69 @@ let dashboardData: DashboardData = {
   lastUpdated: new Date().toISOString(),
 }
 
+let isRefreshing = false
+let refreshError: string | null = null
+
 async function refreshData() {
+  if (isRefreshing) return
+  isRefreshing = true
+  refreshError = null
+  const start = Date.now()
+
   try {
     const data = await fetchAllAssets()
     dashboardData = { ...data, lastUpdated: new Date().toISOString() }
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1)
     console.log(
-      `Data refreshed: ${data.stocks.length} stocks, ${data.crypto.length} crypto, ${data.etfs.length} ETFs, ${data.commodities.length} commodities`
+      `[${elapsed}s] Data refreshed: ${data.stocks.length} stocks, ${data.xstocks.length} xStocks, ${data.crypto.length} crypto, ${data.etfs.length} ETFs, ${data.commodities.length} commodities`
     )
   } catch (err) {
-    console.error("Refresh failed:", err)
+    refreshError = err instanceof Error ? err.message : String(err)
+    console.error("Refresh failed:", refreshError)
+  } finally {
+    isRefreshing = false
   }
 }
 
-app.get("/api/dashboard", (_req, res) => res.json(dashboardData))
+// ── API routes ─────────────────────────────────────────────────────────────
+
+app.get("/api/dashboard", (_req, res) => {
+  const staleMs = Date.now() - new Date(dashboardData.lastUpdated).getTime()
+  const stale = staleMs > 30 * 60 * 1000
+  res.json({ ...dashboardData, _meta: { stale, refreshing: isRefreshing, error: refreshError } })
+})
+
 app.get("/api/market", (_req, res) => res.json(dashboardData.market))
 
+app.get("/api/tweets", async (req, res) => {
+  const symbol = req.query.symbol as string
+  if (!symbol || symbol.length > 20) {
+    return res.status(400).json({ error: "Invalid symbol" })
+  }
+  try {
+    const result = await fetchTweetsForSymbol(symbol)
+    res.json(result)
+  } catch {
+    res.status(500).json({ error: "Failed to fetch tweets", count: 0, tweets: [] })
+  }
+})
 
-// Serve static frontend
+app.get("/api/health", (_req, res) => {
+  const staleMs = Date.now() - new Date(dashboardData.lastUpdated).getTime()
+  const healthy = dashboardData.stocks.length > 100 && staleMs < 60 * 60 * 1000
+  res.status(healthy ? 200 : 503).json({
+    ok: healthy,
+    stocks: dashboardData.stocks.length,
+    lastUpdated: dashboardData.lastUpdated,
+    refreshing: isRefreshing,
+  })
+})
+
+// ── Static frontend ────────────────────────────────────────────────────────
+
 const distPath = path.resolve(__dirname, "../dist")
 app.use(express.static(distPath))
 
-// SPA fallback
 app.use((req, res, next) => {
   if (req.path.startsWith("/api") || req.path.includes(".")) return next()
   res.sendFile(path.join(distPath, "index.html"))
@@ -58,8 +102,14 @@ app.use((req, res, next) => {
 
 const PORT = parseInt(process.env.PORT || "3001")
 
-// Fetch data on startup, then start serving
+// ── Startup + scheduled refresh ────────────────────────────────────────────
+
 await refreshData()
+
+// Refresh every 15 minutes in production
+if (process.env.NODE_ENV === "production") {
+  setInterval(refreshData, 15 * 60 * 1000)
+}
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
