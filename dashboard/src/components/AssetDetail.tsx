@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { X, TrendingUp, TrendingDown, Minus, MessageCircle, Sparkles } from "lucide-react"
 import type { ScreenerAsset, NitterTweet } from "../types"
 import { fetchTweets, fetchInsight } from "../lib/api"
+import { Markdown } from "./Markdown"
 
 interface Props {
   asset: ScreenerAsset | null
@@ -216,9 +217,9 @@ export function AssetDetail({ asset, onClose }: Props) {
             {insightLoading ? (
               <div className="shimmer h-4 rounded" style={{ width: "80%" }} />
             ) : (
-              <p style={{ color: "var(--sol-base02)", fontSize: "13px", lineHeight: 1.6 }}>
-                {insight || "No insight available."}
-              </p>
+              <div style={{ color: "var(--sol-base02)", fontSize: "13px", lineHeight: 1.6 }}>
+                <Markdown text={insight || "No insight available."} />
+              </div>
             )}
           </div>
 
