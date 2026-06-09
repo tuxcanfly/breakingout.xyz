@@ -2,6 +2,7 @@ import type { ScreenerAsset, MarketRegime, AssetCategory } from "../types.js"
 import { classifyAsset } from "./taxonomy.js"
 import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
 import { XSTOCK_PRODUCTS } from "./xstocks.js"
+import { fetchAleabitoMentions, fetchAshenbrennerMentions } from "./nitter.js"
 import { SP500_STOCKS, EXTRA_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
 
 interface CacheEntry<T> { data: T; timestamp: number }
@@ -378,7 +379,13 @@ function computeSignals(assets: ScreenerAsset[]): ScreenerAsset[] {
   })
 }
 
-function computeTags(assets: ScreenerAsset[], market: MarketRegime, allAssets: ScreenerAsset[]): ScreenerAsset[] {
+function computeTags(
+  assets: ScreenerAsset[],
+  market: MarketRegime,
+  allAssets: ScreenerAsset[],
+  aleabitoMentions: Set<string>,
+  aschenbrennerMentions: Set<string>
+): ScreenerAsset[] {
   const pcts = allAssets.map((a) => a.pct1M).filter((p) => !isNaN(p))
   const top5 = pcts.length ? pcts.sort((a, b) => b - a)[Math.floor(pcts.length * 0.05)] || 20 : 20
   return assets.map((a) => {
@@ -403,8 +410,9 @@ function computeTags(assets: ScreenerAsset[], market: MarketRegime, allAssets: S
     if ((a.setupScore || 0) >= 80 && (a.riskScore || 100) <= 45) t.push("clean-setup")
     if (a.trendState === "transition") t.push("transition")
     if (a.trendState === "downtrend") t.push("avoid")
-    if (a.category === "crypto" && a.pct1M > top5) t.push("aleabitoreddit")
-    if (a.category === "stocks" && a.pct1M > 15 && a.adrPercent > 3) t.push("aleabitoreddit")
+    // Mention tags based on actual X accounts
+    if (aleabitoMentions.has(a.symbol)) t.push("aleabitoreddit")
+    if (aschenbrennerMentions.has(a.symbol)) t.push("aschenbrenner")
     if (a.tokenSymbol) t.push("xstock")
     return { ...a, tags: t }
   })
@@ -413,8 +421,8 @@ function computeTags(assets: ScreenerAsset[], market: MarketRegime, allAssets: S
 // ── Unified fetch ──────────────────────────────────────────────────────────
 
 export async function fetchAllAssets() {
-  const [{ stocks, xstocks }, crypto, etfs, commodities, market] = await Promise.all([
-    fetchStocks(), fetchCrypto(), fetchETFs(), fetchCommodities(), fetchMarketRegime(),
+  const [{ stocks, xstocks }, crypto, etfs, commodities, market, aleabitoMentions, aschenbrennerMentions] = await Promise.all([
+    fetchStocks(), fetchCrypto(), fetchETFs(), fetchCommodities(), fetchMarketRegime(), fetchAleabitoMentions(), fetchAshenbrennerMentions(),
   ])
 
   const signaled = computeSignals([...stocks, ...crypto, ...etfs, ...commodities])
@@ -423,11 +431,11 @@ export async function fetchAllAssets() {
   const all = signaled
 
   return {
-    stocks: computeTags(pick(stocks), market, all),
-    xstocks: computeTags(pick(xstocks), market, all),
-    crypto: computeTags(pick(crypto), market, all),
-    etfs: computeTags(pick(etfs), market, all),
-    commodities: computeTags(pick(commodities), market, all),
+    stocks: computeTags(pick(stocks), market, all, aleabitoMentions, aschenbrennerMentions),
+    xstocks: computeTags(pick(xstocks), market, all, aleabitoMentions, aschenbrennerMentions),
+    crypto: computeTags(pick(crypto), market, all, aleabitoMentions, aschenbrennerMentions),
+    etfs: computeTags(pick(etfs), market, all, aleabitoMentions, aschenbrennerMentions),
+    commodities: computeTags(pick(commodities), market, all, aleabitoMentions, aschenbrennerMentions),
     market,
   }
 }

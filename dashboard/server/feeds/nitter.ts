@@ -89,6 +89,66 @@ async function fetchFromInstance(instance: string, symbol: string): Promise<Nitt
   }
 }
 
+const mentionCache = new Map<string, { data: Set<string>; timestamp: number }>()
+const MENTION_CACHE_TTL = 30 * 60 * 1000
+
+function extractSymbolsFromTweets(tweets: NitterTweet[]): Set<string> {
+  const symbols = new Set<string>()
+  const cashtagRegex = /\$([A-Z]{1,5}\.?[A-Z]?)/g
+  for (const t of tweets) {
+    let m: RegExpExecArray | null
+    while ((m = cashtagRegex.exec(t.text)) !== null) {
+      symbols.add(m[1])
+    }
+  }
+  return symbols
+}
+
+async function fetchFromUser(instance: string, username: string): Promise<NitterTweet[]> {
+  const url = `${instance}/search/rss?f=tweets&q=from%3A${username}&e-replies=on&e-nativeretweets=on`
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "breakingout.xyz/1.0" },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return []
+    const xml = await res.text()
+    if (!xml.includes("<item>")) return []
+    return parseRSS(xml)
+  } catch {
+    return []
+  }
+}
+
+async function fetchUserMentions(username: string): Promise<Set<string>> {
+  const cacheKey = `${username}:mentions`
+  const cached = mentionCache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < MENTION_CACHE_TTL) {
+    return cached.data
+  }
+
+  for (const instance of NITTER_INSTANCES) {
+    const tweets = await fetchFromUser(instance, username)
+    if (tweets.length > 0) {
+      const symbols = extractSymbolsFromTweets(tweets)
+      mentionCache.set(cacheKey, { data: symbols, timestamp: Date.now() })
+      return symbols
+    }
+  }
+
+  const empty = new Set<string>()
+  mentionCache.set(cacheKey, { data: empty, timestamp: Date.now() })
+  return empty
+}
+
+export async function fetchAleabitoMentions(): Promise<Set<string>> {
+  return fetchUserMentions("aleabitoreddit")
+}
+
+export async function fetchAshenbrennerMentions(): Promise<Set<string>> {
+  return fetchUserMentions("aschenbrenner")
+}
+
 export async function fetchTweetsForSymbol(symbol: string): Promise<NitterResult> {
   const cacheKey = `tweets:${symbol.toUpperCase()}`
   const cached = tweetCache.get(cacheKey)

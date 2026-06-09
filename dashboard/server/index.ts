@@ -4,7 +4,8 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { fetchAllAssets } from "./feeds/scraper.js"
 import { fetchTweetsForSymbol } from "./feeds/nitter.js"
-import type { DashboardData } from "./types.js"
+import { generateInsight } from "./feeds/insights.js"
+import type { DashboardData, ScreenerAsset } from "./types.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -76,6 +77,19 @@ app.get("/api/tweets", async (req, res) => {
     res.json(result)
   } catch {
     res.status(500).json({ error: "Failed to fetch tweets", count: 0, tweets: [] })
+  }
+})
+
+app.post("/api/insight", async (req, res) => {
+  const asset = req.body as ScreenerAsset
+  if (!asset?.symbol || asset.symbol.length > 20) {
+    return res.status(400).json({ error: "Invalid asset" })
+  }
+  try {
+    const insight = await generateInsight(asset)
+    res.json({ insight })
+  } catch {
+    res.status(500).json({ error: "Insight generation failed" })
   }
 })
 

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { fetchDashboard } from "./lib/api"
 import type { DashboardData, AssetCategory, ScreenerAsset } from "./types"
 import { AssetTable } from "./components/AssetTable"
+import { AssetDetail } from "./components/AssetDetail"
 import { SectorHeatmap } from "./components/SectorHeatmap"
 import { MarketBar } from "./components/MarketBar"
 import { Input } from "./components/ui/input"
@@ -47,8 +48,12 @@ const HELP_SECTIONS = [
     body: "Moving Average direction for\n10, 20, 50, and 200-period SMAs.\nGreen = price above MA (uptrend).",
   },
   {
+    title: "NAAIM",
+    body: "National Association of Active\nInvestment Managers exposure index.\n70–90 = favorable risk-on regime.\nLearn more: naaim.org",
+  },
+  {
     title: "Tags",
-    body: "Algorithmic signal tags:\n• naaim — favorable NAAIM regime\n• all-ma-up — all MAs aligned bullish\n• momentum-leader — top 5% 1M return\n• breakout — strong + MA aligned\n• stage2 — up across 1M 3M 6M\n• tight-base — consolidation\n• xstock — tokenized equity available\n• aleabitoreddit — high momentum + vol",
+    body: "Algorithmic signal tags:\n• naaim — favorable NAAIM regime\n• all-ma-up — all MAs aligned bullish\n• momentum-leader — top 5% 1M return\n• breakout — strong + MA aligned\n• stage2 — up across 1M 3M 6M\n• tight-base — consolidation\n• xstock — tokenized equity available\n• aleabitoreddit — mentioned by @aleabitoreddit\n• aschenbrenner — mentioned by @aschenbrenner",
   },
   {
     title: "Ranks",
@@ -87,6 +92,7 @@ function App() {
   const [sectorFilter, setSectorFilter] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dense, setDense] = useState(false)
+  const [selectedAsset, setSelectedAsset] = useState<ScreenerAsset | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const helpRef = useRef<HTMLDivElement>(null)
 
@@ -478,9 +484,12 @@ function App() {
             getTightness={tightnessScore}
             dense={dense}
             highlight={filter}
+            onRowClick={(asset) => setSelectedAsset(asset)}
           />
         )}
       </main>
+
+      <AssetDetail key={selectedAsset?.symbol} asset={selectedAsset} onClose={() => setSelectedAsset(null)} />
     </div>
   )
 }

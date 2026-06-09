@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import type { ScreenerAsset } from "../types"
 import { ChartHover } from "./ChartHover"
 import {
@@ -15,6 +15,7 @@ interface Props {
   getTightness?: (a: ScreenerAsset) => number
   dense?: boolean
   highlight?: string
+  onRowClick?: (asset: ScreenerAsset) => void
 }
 
 type SortKey =
@@ -43,6 +44,7 @@ interface SortHeaderProps {
   className?: string
   title?: string
   goodDirection?: "up" | "down"
+  align?: "left" | "center" | "right"
 }
 
 function SortHeader({
@@ -54,16 +56,18 @@ function SortHeader({
   className = "",
   title,
   goodDirection,
+  align = "left",
 }: SortHeaderProps) {
   const active = sortKey === sortId
+  const alignClass = align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left"
   return (
     <th
-      className={`px-2 text-left font-semibold cursor-pointer select-none whitespace-nowrap ${className}`}
+      className={`px-2 ${alignClass} font-semibold cursor-pointer select-none whitespace-nowrap ${className}`}
       style={{ color: "var(--sol-base01)", fontSize: "11px", letterSpacing: "0.02em" }}
       onClick={() => onSort(sortId)}
       title={title}
     >
-      <div className="flex items-center gap-0.5">
+      <div className={`flex items-center gap-0.5 ${align === "center" ? "justify-center" : align === "right" ? "justify-end" : ""}`}>
         <span>
           {label}
           {goodDirection === "up" && (
@@ -123,7 +127,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   )
 }
 
-export function AssetTable({ assets, getTightness, dense = false, highlight = "" }: Props) {
+export function AssetTable({ assets, getTightness, dense = false, highlight = "", onRowClick }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("pct1M")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
@@ -266,6 +270,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 sortDir={sortDir}
                 onSort={handleSort}
                 className={thV}
+                align="center"
               />
               <SortHeader
                 label="1M"
@@ -274,6 +279,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 sortDir={sortDir}
                 onSort={handleSort}
                 className={thV}
+                align="center"
               />
               <SortHeader
                 label="3M"
@@ -282,6 +288,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 sortDir={sortDir}
                 onSort={handleSort}
                 className={thV}
+                align="center"
               />
               <SortHeader
                 label="6M"
@@ -290,6 +297,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 sortDir={sortDir}
                 onSort={handleSort}
                 className={thV}
+                align="center"
               />
               <SortHeader
                 label="1Y"
@@ -298,6 +306,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 sortDir={sortDir}
                 onSort={handleSort}
                 className={thV}
+                align="center"
               />
             </tr>
           </thead>
@@ -306,9 +315,11 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
               <tr
                 key={`${asset.category}-${asset.symbol}`}
                 className="stock-row"
+                onClick={() => onRowClick?.(asset)}
                 style={{
                   borderBottom: "1px solid rgba(147,161,161,0.12)",
                   animationDelay: `${Math.min(i * 8, 300)}ms`,
+                  cursor: onRowClick ? "pointer" : "default",
                 }}
               >
                 <td className={`px-2 ${cellV} sticky-col`}>
@@ -424,19 +435,19 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 <td className={`px-2 ${cellV}`}>
                   <TagList tags={asset.tags} />
                 </td>
-                <td className={`px-2 ${cellV}`}>
+                <td className={`px-2 ${cellV} text-center`}>
                   <PctCell value={asset.change24h ?? 0} dense={dense} />
                 </td>
-                <td className={`px-2 ${cellV}`}>
+                <td className={`px-2 ${cellV} text-center`}>
                   <PctCell value={asset.pct1M} dense={dense} />
                 </td>
-                <td className={`px-2 ${cellV}`}>
+                <td className={`px-2 ${cellV} text-center`}>
                   <PctCell value={asset.pct3M} dense={dense} />
                 </td>
-                <td className={`px-2 ${cellV}`}>
+                <td className={`px-2 ${cellV} text-center`}>
                   <PctCell value={asset.pct6M} dense={dense} />
                 </td>
-                <td className={`px-2 ${cellV}`}>
+                <td className={`px-2 ${cellV} text-center`}>
                   <PctCell value={asset.pct1Y} dense={dense} />
                 </td>
               </tr>
@@ -524,14 +535,33 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   transition: { bg: "rgba(181,137,0,0.10)", color: "#b58900", border: "rgba(181,137,0,0.25)" },
   avoid: { bg: "rgba(220,50,47,0.12)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
   aleabitoreddit: { bg: "rgba(211,54,130,0.10)", color: "#d33682", border: "rgba(211,54,130,0.25)" },
+  aschenbrenner: { bg: "rgba(42,161,152,0.10)", color: "#2aa198", border: "rgba(42,161,152,0.25)" },
   xstock: { bg: "rgba(108,113,196,0.12)", color: "#6c71c4", border: "rgba(108,113,196,0.25)" },
 }
 
+const TAG_LINKS: Record<string, string> = {
+  aleabitoreddit: "https://x.com/aleabitoreddit",
+  aschenbrenner: "https://x.com/leopoldasch",
+}
+
 function TagList({ tags }: { tags?: string[] }) {
+  const [hoverOpen, setHoverOpen] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   if (!tags || tags.length === 0) return null
   // Filter out xstock tag — shown as badge next to symbol instead
-  const display = tags.filter((t) => t !== "xstock").slice(0, 3)
-  const remaining = tags.filter((t) => t !== "xstock").length - display.length
+  const allVisible = tags.filter((t) => t !== "xstock")
+  const display = allVisible.slice(0, 3)
+  const hidden = allVisible.slice(3)
+  const remaining = hidden.length
+
+  const onEnter = () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setHoverOpen(true)
+  }
+  const onLeave = () => {
+    timerRef.current = setTimeout(() => setHoverOpen(false), 120)
+  }
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -542,8 +572,10 @@ function TagList({ tags }: { tags?: string[] }) {
             color: "var(--sol-base01)",
             border: "var(--sol-base1)",
           }
+        const link = TAG_LINKS[tag]
+        const TagEl = link ? "a" : "span"
         return (
-          <span
+          <TagEl
             key={tag}
             className="inline-block px-1 rounded font-medium"
             style={{
@@ -552,23 +584,87 @@ function TagList({ tags }: { tags?: string[] }) {
               backgroundColor: style.bg,
               color: style.color,
               border: `1px solid ${style.border}`,
+              textDecoration: "none",
+              cursor: link ? "pointer" : "default",
             }}
             title={tag}
+            href={link}
+            target={link ? "_blank" : undefined}
+            rel={link ? "noopener noreferrer" : undefined}
           >
             {tag}
-          </span>
+          </TagEl>
         )
       })}
       {remaining > 0 && (
         <span
-          className="inline-block px-1 rounded"
+          className="relative inline-block px-1 rounded cursor-default"
           style={{
             fontSize: "9px",
             color: "var(--sol-base1)",
             background: "var(--sol-base2)",
           }}
+          onMouseEnter={onEnter}
+          onMouseLeave={onLeave}
         >
           +{remaining}
+          {hoverOpen && (
+            <span
+              className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1.5 rounded-md shadow-lg"
+              style={{
+                background: "var(--sol-base3)",
+                border: "1px solid var(--sol-base2)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
+                minWidth: "80px",
+                animation: "fadeIn 0.12s ease-out",
+              }}
+              onMouseEnter={onEnter}
+              onMouseLeave={onLeave}
+            >
+              <span
+                className="absolute left-1/2 -translate-x-1/2 top-full"
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeft: "4px solid transparent",
+                  borderRight: "4px solid transparent",
+                  borderTop: "4px solid var(--sol-base2)",
+                }}
+              />
+              <div className="flex flex-wrap gap-1">
+                {hidden.map((tag) => {
+                  const s =
+                    tagStyles[tag] || {
+                      bg: "var(--sol-base2)",
+                      color: "var(--sol-base01)",
+                      border: "var(--sol-base1)",
+                    }
+                  const link = TAG_LINKS[tag]
+                  const TagEl = link ? "a" : "span"
+                  return (
+                    <TagEl
+                      key={tag}
+                      className="inline-block px-1 rounded font-medium whitespace-nowrap"
+                      style={{
+                        fontSize: "9px",
+                        lineHeight: "14px",
+                        backgroundColor: s.bg,
+                        color: s.color,
+                        border: `1px solid ${s.border}`,
+                        textDecoration: "none",
+                        cursor: link ? "pointer" : "default",
+                      }}
+                      href={link}
+                      target={link ? "_blank" : undefined}
+                      rel={link ? "noopener noreferrer" : undefined}
+                    >
+                      {tag}
+                    </TagEl>
+                  )
+                })}
+              </div>
+            </span>
+          )}
         </span>
       )}
     </div>
