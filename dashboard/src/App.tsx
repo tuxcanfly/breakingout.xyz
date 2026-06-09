@@ -33,6 +33,17 @@ const tabs: { id: TabId; label: string }[] = [
   { id: "commodities", label: "Commodities" },
 ]
 
+const ExternalLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ color: "var(--sol-blue)", textDecoration: "underline" }}
+  >
+    {children}
+  </a>
+)
+
 const HELP_SECTIONS = [
   {
     title: "Tight",
@@ -48,11 +59,32 @@ const HELP_SECTIONS = [
   },
   {
     title: "NAAIM",
-    body: "National Association of Active\nInvestment Managers exposure index.\n70–90 = favorable risk-on regime.\nLearn more: naaim.org",
+    body: (
+      <>
+        National Association of Active Investment Managers exposure index.
+        {"\n"}70–90 = favorable risk-on regime.
+        {"\n"}Learn more: <ExternalLink href="https://www.naaim.org">naaim.org</ExternalLink>
+      </>
+    ),
   },
   {
     title: "Tags",
-    body: "Algorithmic signal tags:\n• naaim — favorable NAAIM regime\n• all-ma-up — all MAs aligned bullish\n• momentum-leader — top 5% 1M return\n• breakout — strong + MA aligned\n• stage2 — up across 1M 3M 6M\n• tight-base — consolidation\n• xstock — tokenized equity available\n• aleabitoreddit — mentioned by @aleabitoreddit\n• aschenbrenner — mentioned by @aschenbrenner",
+    body: (
+      <>
+        Algorithmic signal tags:
+        {"\n"}• naaim — favorable NAAIM regime
+        {"\n"}• all-ma-up — all MAs aligned bullish
+        {"\n"}• momentum-leader — top 5% 1M return
+        {"\n"}• breakout — strong + MA aligned
+        {"\n"}• stage2 — up across 1M 3M 6M
+        {"\n"}• tight-base — consolidation
+        {"\n"}• xstock — tokenized equity available
+        {"\n"}• aleabitoreddit — mentioned by{" "}
+        <ExternalLink href="https://x.com/aleabitoreddit">@aleabitoreddit</ExternalLink>
+        {"\n"}• aschenbrenner — mentioned by{" "}
+        <ExternalLink href="https://x.com/leopoldasch">@leopoldasch</ExternalLink>
+      </>
+    ),
   },
   {
     title: "Ranks",
@@ -298,7 +330,7 @@ function App() {
                   <div className="font-bold" style={{ color: "var(--sol-blue)", fontSize: "12px" }}>
                     {s.title}
                   </div>
-                  <pre
+                  <div
                     style={{
                       color: "var(--sol-base01)",
                       fontSize: "11px",
@@ -309,7 +341,7 @@ function App() {
                     }}
                   >
                     {s.body}
-                  </pre>
+                  </div>
                 </div>
               ))}
               <div className="pt-2 border-t" style={{ borderColor: "var(--sol-base2)" }}>
