@@ -1,5 +1,6 @@
 import type { AssetCategory, ScreenerAsset } from "../types.js"
 import { classifyAsset } from "./taxonomy.js"
+import { coilTightness } from "./indicators.js"
 
 export interface YahooAssetSeed {
   symbol: string
@@ -69,12 +70,15 @@ async function fetchYahooAsset(seed: YahooAssetSeed): Promise<ScreenerAsset | nu
   const close = bars.at(-1)?.close || result.meta?.regularMarketPrice || 0
   if (close <= 0) return null
 
+  const sma10 = sma(bars.map((b) => b.close), 10)
   const sma20 = sma(bars.map((b) => b.close), 20)
   const sma50 = sma(bars.map((b) => b.close), 50)
   const sma200 = sma(bars.map((b) => b.close), 200)
   const adrPercent = average(
     bars.slice(-14).map((b) => ((b.high - b.low) / b.close) * 100)
   )
+  const high3M = Math.max(...bars.slice(-63).map((b) => b.high))
+  const tightness = coilTightness(close, sma10, sma20, sma50, adrPercent)
   const volume = average(bars.slice(-20).map((b) => b.volume || 0))
   const up = (s: number) => close >= s ? "up" as const : "down" as const
   const classification = classifyAsset(seed.underlyingSymbol || seed.symbol, seed.category, seed.name)
@@ -87,9 +91,11 @@ async function fetchYahooAsset(seed: YahooAssetSeed): Promise<ScreenerAsset | nu
     sector: classification.sector,
     subsector: classification.subsector,
     avgVolume: formatVolume(volume),
-    tightness: sma20 > 0 && Math.abs(close - sma20) / sma20 < 0.02 ? "tight" : "",
+    tightness: tightness !== undefined && tightness < 4 ? "tight" : "",
+    coilTightness: tightness,
+    distToHighPct: high3M > 0 ? round((close / high3M - 1) * 100) : undefined,
     adrPercent: round(adrPercent),
-    ma10: up(sma(bars.map((b) => b.close), 10)),
+    ma10: up(sma10),
     ma20: up(sma20),
     ma50: up(sma50),
     ma200: up(sma200),

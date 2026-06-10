@@ -1,8 +1,9 @@
 import type { ScreenerAsset, MarketRegime, AssetCategory } from "../types.js"
 import { classifyAsset } from "./taxonomy.js"
+import { coilTightness } from "./indicators.js"
 import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
 import { XSTOCK_PRODUCTS } from "./xstocks.js"
-import { fetchAleabitoMentions, fetchAshenbrennerMentions, fetchRealSimpleArielMentions, fetchStamatoudismMentions, fetchJfsrevMentions, fetchAsymTradingMentions } from "./nitter.js"
+import { fetchAleabitoMentions, fetchAshenbrennerMentions, fetchRealSimpleArielMentions, fetchStamatoudismMentions, fetchJfsrevMentions, fetchAsymTradingMentions, fetchTenetResearchMentions } from "./nitter.js"
 import { SP500_STOCKS, EXTRA_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
 
 interface CacheEntry<T> { data: T; timestamp: number }
@@ -21,7 +22,7 @@ function setCache<T>(key: string, data: T): void {
 
 // ── TradingView scanner ────────────────────────────────────────────────────
 
-const TV_COLS = ["name","close","volume","Perf.1M","Perf.3M","Perf.6M","Perf.Y","Volatility.D","SMA20","SMA50","SMA200","RSI","change"]
+const TV_COLS = ["name","close","volume","Perf.1M","Perf.3M","Perf.6M","Perf.Y","Volatility.D","SMA20","SMA50","SMA200","RSI","change","SMA10","High.3M"]
 
 interface AssetMeta {
   displaySymbol?: string
@@ -90,9 +91,13 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetM
   const sma50 = (v[9] as number) || 0
   const sma200 = (v[10] as number) || 0
   const vol = (v[2] as number) || 0
+  const sma10 = (v[13] as number) || 0
+  const high3M = (v[14] as number) || 0
   const up = (s: number) => close >= s ? "up" as const : "down" as const
   const displaySymbol = meta.displaySymbol || symbol
   const classification = classifyAsset(meta.underlyingSymbol || symbol, cat, meta.name)
+  const tightness = coilTightness(close, sma10, sma20, sma50, adr)
+  const distToHighPct = high3M > 0 ? parseFloat(((close / high3M - 1) * 100).toFixed(1)) : undefined
   return {
     symbol: displaySymbol,
     name: meta.name || displaySymbol,
@@ -101,9 +106,11 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetM
     sector: classification.sector,
     subsector: classification.subsector,
     avgVolume: vol >= 1e9 ? `${(vol / 1e9).toFixed(1)}B` : `${(vol / 1e6).toFixed(0)}M`,
-    tightness: sma20 > 0 && Math.abs(close - sma20) / sma20 < 0.02 ? "tight" : "",
+    tightness: tightness !== undefined && tightness < 4 ? "tight" : "",
+    coilTightness: tightness,
+    distToHighPct,
     adrPercent: parseFloat(adr.toFixed(1)),
-    ma10: up(sma20),
+    ma10: up(sma10 || sma20),
     ma20: up(sma20),
     ma50: up(sma50),
     ma200: up(sma200),
@@ -284,12 +291,42 @@ async function fetchCrypto(): Promise<ScreenerAsset[]> {
 
 // ── Market regime ──────────────────────────────────────────────────────────
 
+// SPY vs its 140-day EMA — the exposure dial from the breakout study.
+// Backtested as a portfolio-level throttle (cuts drawdown roughly in half),
+// not a per-trade entry filter.
+async function fetchSpyEma140(): Promise<{ regime: "risk-on" | "risk-off"; vsEmaPct: number } | null> {
+  try {
+    const url = "https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=2y&interval=1d"
+    const res = await fetch(url, {
+      headers: { "User-Agent": "breakingout.xyz/1.0" },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const data = await res.json() as { chart?: { result?: Array<{ indicators?: { quote?: Array<{ close?: Array<number | null> }> } }> } }
+    const closes = (data.chart?.result?.[0]?.indicators?.quote?.[0]?.close || []).filter((c): c is number => typeof c === "number")
+    if (closes.length < 150) return null
+    const alpha = 2 / (140 + 1)
+    let ema = closes[0]
+    for (const c of closes) ema = c * alpha + ema * (1 - alpha)
+    const last = closes[closes.length - 1]
+    return {
+      regime: last > ema ? "risk-on" : "risk-off",
+      vsEmaPct: parseFloat(((last / ema - 1) * 100).toFixed(1)),
+    }
+  } catch {
+    return null
+  }
+}
+
 async function fetchMarketRegime(): Promise<MarketRegime> {
   const cached = getCached<MarketRegime>("market")
   if (cached) return cached
 
   try {
-    const rows = await scanTV("https://scanner.tradingview.com/america/scan", ["AMEX:SPY"])
+    const [rows, ema140] = await Promise.all([
+      scanTV("https://scanner.tradingview.com/america/scan", ["AMEX:SPY"]),
+      fetchSpyEma140(),
+    ])
     const m: MarketRegime = {
       spy200SMA: "below",
       spy50SMA: "below",
@@ -308,6 +345,12 @@ async function fetchMarketRegime(): Promise<MarketRegime> {
       m.spy50SMA = close >= (v[9] as number) ? "above" : "below"
       m.spy200SMA = close >= (v[10] as number) ? "above" : "below"
       m.spy10SMA = (v[3] as number) > 0 ? "above" : "below"
+    }
+    if (ema140) {
+      m.spyRegime = ema140.regime
+      m.spyVsEma140 = ema140.vsEmaPct
+    } else {
+      m.spyRegime = m.spy200SMA === "above" ? "risk-on" : "risk-off"
     }
     setCache("market", m)
     return m
@@ -359,22 +402,44 @@ function scoreRisk(a: ScreenerAsset): number {
   return Math.round(Math.min(100, volatility + trendPenalty + weakness))
 }
 
+// Blended cross-sectional momentum over 1/3/6/12-month horizons — the
+// strongest factor in the breakout study (fwd60 spread 4.8% vs 2.5% for
+// top-ranked names vs the rest).
+function blendedMomentum(a: ScreenerAsset, pool: ScreenerAsset[]): number {
+  const horizons: Array<"pct1M" | "pct3M" | "pct6M" | "pct1Y"> = ["pct1M", "pct3M", "pct6M", "pct1Y"]
+  const ranks = horizons.map((h) => percentile(a[h], pool.map((x) => x[h])))
+  return Math.round(ranks.reduce((s, r) => s + r, 0) / ranks.length)
+}
+
+// COIL composite (0-100): proximity to the 50d-high trigger, base tightness,
+// and momentum leadership, weighted by effect size in the backtest.
+function scoreCoil(a: ScreenerAsset): number {
+  const lead = (a.momentumRank || 0) * 0.4
+  const tight = a.coilTightness !== undefined
+    ? 25 * Math.max(0, Math.min(1, (12 - a.coilTightness) / 8))
+    : 0
+  const trigger = a.distToHighPct !== undefined
+    ? 35 * Math.max(0, Math.min(1, 1 + a.distToHighPct / 10))
+    : 0
+  return Math.round(Math.min(100, lead + tight + trigger))
+}
+
 function computeSignals(assets: ScreenerAsset[]): ScreenerAsset[] {
-  const allPcts = assets.map((a) => a.pct1M)
   return assets.map((a) => {
-    const sectorPcts = assets.filter((x) => x.sector === a.sector).map((x) => x.pct1M)
-    const categoryPcts = assets.filter((x) => x.category === a.category).map((x) => x.pct1M)
+    const sectorPool = assets.filter((x) => x.sector === a.sector)
+    const categoryPool = assets.filter((x) => x.category === a.category)
     const withRanks: ScreenerAsset = {
       ...a,
-      momentumRank: percentile(a.pct1M, allPcts),
-      categoryRank: percentile(a.pct1M, categoryPcts),
-      sectorRank: percentile(a.pct1M, sectorPcts),
+      momentumRank: blendedMomentum(a, assets),
+      categoryRank: blendedMomentum(a, categoryPool),
+      sectorRank: blendedMomentum(a, sectorPool),
       trendState: trendState(a),
     }
     return {
       ...withRanks,
       setupScore: scoreSetup(withRanks),
       riskScore: scoreRisk(withRanks),
+      coilScore: scoreCoil(withRanks),
     }
   })
 }
@@ -383,12 +448,7 @@ function computeTags(
   assets: ScreenerAsset[],
   market: MarketRegime,
   allAssets: ScreenerAsset[],
-  aleabitoMentions: Set<string>,
-  aschenbrennerMentions: Set<string>,
-  realsimplearielMentions: Set<string>,
-  stamatoudismMentions: Set<string>,
-  jfsrevMentions: Set<string>,
-  asymtradingMentions: Set<string>
+  mentions: Record<string, Set<string>>
 ): ScreenerAsset[] {
   const pcts = allAssets.map((a) => a.pct1M).filter((p) => !isNaN(p))
   const top5 = pcts.length ? pcts.sort((a, b) => b - a)[Math.floor(pcts.length * 0.05)] || 20 : 20
@@ -412,15 +472,19 @@ function computeTags(
     if ((a.momentumRank || 0) >= 90) t.push("rs-90")
     if ((a.momentumRank || 0) <= 10) t.push("bottom-decile")
     if ((a.setupScore || 0) >= 80 && (a.riskScore || 100) <= 45) t.push("clean-setup")
+    // Full COIL stack: at/near the 50d-high trigger + tight base + momentum
+    // leader. Stacked, these tripled forward returns in the backtest.
+    if (
+      a.distToHighPct !== undefined && a.distToHighPct >= -1 &&
+      a.coilTightness !== undefined && a.coilTightness < 4 &&
+      (a.momentumRank || 0) >= 89
+    ) t.push("coil")
     if (a.trendState === "transition") t.push("transition")
     if (a.trendState === "downtrend") t.push("avoid")
     // Mention tags based on actual X accounts
-    if (aleabitoMentions.has(a.symbol)) t.push("aleabitoreddit")
-    if (aschenbrennerMentions.has(a.symbol)) t.push("aschenbrenner")
-    if (realsimplearielMentions.has(a.symbol)) t.push("realsimpleariel")
-    if (stamatoudismMentions.has(a.symbol)) t.push("stamatoudism")
-    if (jfsrevMentions.has(a.symbol)) t.push("jfsrev")
-    if (asymtradingMentions.has(a.symbol)) t.push("asymtrading")
+    for (const [tag, symbols] of Object.entries(mentions)) {
+      if (symbols.has(a.symbol)) t.push(tag)
+    }
     if (a.tokenSymbol) t.push("xstock")
     return { ...a, tags: t }
   })
@@ -429,9 +493,19 @@ function computeTags(
 // ── Unified fetch ──────────────────────────────────────────────────────────
 
 export async function fetchAllAssets() {
-  const [{ stocks, xstocks }, crypto, etfs, commodities, market, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions] = await Promise.all([
-    fetchStocks(), fetchCrypto(), fetchETFs(), fetchCommodities(), fetchMarketRegime(), fetchAleabitoMentions(), fetchAshenbrennerMentions(), fetchRealSimpleArielMentions(), fetchStamatoudismMentions(), fetchJfsrevMentions(), fetchAsymTradingMentions(),
+  const [{ stocks, xstocks }, crypto, etfs, commodities, market, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions, tenetResearchMentions] = await Promise.all([
+    fetchStocks(), fetchCrypto(), fetchETFs(), fetchCommodities(), fetchMarketRegime(), fetchAleabitoMentions(), fetchAshenbrennerMentions(), fetchRealSimpleArielMentions(), fetchStamatoudismMentions(), fetchJfsrevMentions(), fetchAsymTradingMentions(), fetchTenetResearchMentions(),
   ])
+
+  const mentions: Record<string, Set<string>> = {
+    aleabitoreddit: aleabitoMentions,
+    aschenbrenner: aschenbrennerMentions,
+    realsimpleariel: realsimplearielMentions,
+    stamatoudism: stamatoudismMentions,
+    jfsrev: jfsrevMentions,
+    asymtrading: asymtradingMentions,
+    tenet_research: tenetResearchMentions,
+  }
 
   const signaled = computeSignals([...stocks, ...crypto, ...etfs, ...commodities])
   const byKey = new Map(signaled.map((a) => [`${a.category}:${a.symbol}`, a]))
@@ -439,11 +513,11 @@ export async function fetchAllAssets() {
   const all = signaled
 
   return {
-    stocks: computeTags(pick(stocks), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
-    xstocks: computeTags(pick(xstocks), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
-    crypto: computeTags(pick(crypto), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
-    etfs: computeTags(pick(etfs), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
-    commodities: computeTags(pick(commodities), market, all, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions),
+    stocks: computeTags(pick(stocks), market, all, mentions),
+    xstocks: computeTags(pick(xstocks), market, all, mentions),
+    crypto: computeTags(pick(crypto), market, all, mentions),
+    etfs: computeTags(pick(etfs), market, all, mentions),
+    commodities: computeTags(pick(commodities), market, all, mentions),
     market,
   }
 }

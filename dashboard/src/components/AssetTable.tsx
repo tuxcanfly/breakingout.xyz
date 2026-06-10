@@ -32,6 +32,7 @@ type SortKey =
   | "momentumRank"
   | "setupScore"
   | "riskScore"
+  | "coilScore"
 
 type SortDir = "asc" | "desc"
 
@@ -212,6 +213,16 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 className={thV}
               />
               <SortHeader
+                label="COIL"
+                sortId="coilScore"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thV}
+                goodDirection="up"
+                title="COIL setup score — blends proximity to the 50-day high (trigger), base tightness in ADR units (coil), and blended momentum rank (leadership). Backtested 2012–2026: stacking all three roughly tripled 20-day forward returns vs unfiltered breakouts."
+              />
+              <SortHeader
                 label="RS"
                 sortId="momentumRank"
                 sortKey={sortKey}
@@ -219,7 +230,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 onSort={handleSort}
                 className={thV}
                 goodDirection="up"
-                title="Relative Strength — percentile rank by 1M momentum. Higher is better."
+                title="Relative Strength — blended percentile rank across 1M, 3M, 6M, and 1Y momentum. The strongest single factor in the breakout backtest. Higher is better."
               />
               <SortHeader
                 label="Setup"
@@ -364,7 +375,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                           fontSize: "9px",
                           height: "14px",
                         }}
-                        title="Price within 2% of 20-day SMA"
+                        title={`Tight base — MA compression ${asset.coilTightness !== undefined ? asset.coilTightness.toFixed(1) : "<4"} ADR units (research threshold: 4)`}
                       >
                         T
                       </Badge>
@@ -392,6 +403,9 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                       {asset.subsector || asset.industry}
                     </div>
                   </div>
+                </td>
+                <td className={`px-2 ${cellV}`}>
+                  <CoilPill asset={asset} />
                 </td>
                 <td className={`px-2 ${cellV}`}>
                   <ScorePill value={asset.momentumRank ?? 50} kind="rank" />
@@ -515,6 +529,54 @@ function ScorePill({ value, kind }: { value: number; kind: "rank" | "setup" | "r
   )
 }
 
+function CoilPill({ asset }: { asset: ScreenerAsset }) {
+  const value = asset.coilScore
+  if (value === undefined) {
+    return (
+      <span style={{ color: "var(--sol-base1)", fontSize: "10px" }} title="COIL score unavailable — missing MA or range data">
+        —
+      </span>
+    )
+  }
+  const dist = asset.distToHighPct
+  const tight = asset.coilTightness
+  const rank = asset.momentumRank ?? 0
+  const triggerOk = dist !== undefined && dist >= -1
+  const tightOk = tight !== undefined && tight < 4
+  const leadOk = rank >= 89
+  const full = triggerOk && tightOk && leadOk
+  const lines = [
+    `COIL ${value} of 100${full ? " — full setup" : ""}`,
+    dist !== undefined
+      ? `${triggerOk ? "✓" : "✗"} Trigger: ${dist.toFixed(1)}% from 3M high`
+      : "✗ Trigger: no high data",
+    tight !== undefined
+      ? `${tightOk ? "✓" : "✗"} Coil: tightness ${tight.toFixed(1)} ADR units (tight < 4)`
+      : "✗ Coil: no tightness data",
+    `${leadOk ? "✓" : "✗"} Lead: top ${100 - rank}% blended momentum (need top 11%)`,
+  ]
+  const color =
+    value >= 80 ? "var(--sol-green)" : value >= 60 ? "var(--sol-blue)" : value >= 40 ? "var(--sol-yellow)" : "var(--sol-red)"
+  return (
+    <span
+      className="inline-flex items-center justify-center gap-0.5 rounded tabular-nums font-bold"
+      title={lines.join("\n")}
+      style={{
+        minWidth: 28,
+        height: 18,
+        padding: "0 3px",
+        color,
+        backgroundColor: full ? "rgba(133,153,0,0.10)" : "var(--sol-base2)",
+        border: full ? "1px solid rgba(133,153,0,0.45)" : "1px solid rgba(147,161,161,0.25)",
+        fontSize: "10px",
+      }}
+    >
+      {value.toFixed(0)}
+      {full && <span style={{ fontSize: "8px" }}>●</span>}
+    </span>
+  )
+}
+
 const tagStyles: Record<string, { bg: string; color: string; border: string }> = {
   naaim: { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
   "naaim-extreme": { bg: "rgba(203,75,22,0.10)", color: "#cb4b16", border: "rgba(203,75,22,0.25)" },
@@ -528,6 +590,7 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   "low-volatility": { bg: "rgba(42,161,152,0.10)", color: "#2aa198", border: "rgba(42,161,152,0.20)" },
   "tight-base": { bg: "rgba(108,113,196,0.10)", color: "#6c71c4", border: "rgba(108,113,196,0.20)" },
   breakout: { bg: "rgba(38,139,210,0.12)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
+  coil: { bg: "rgba(133,153,0,0.14)", color: "#859900", border: "rgba(133,153,0,0.35)" },
   stage2: { bg: "rgba(133,153,0,0.08)", color: "#859900", border: "rgba(133,153,0,0.15)" },
   "rs-90": { bg: "rgba(38,139,210,0.12)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
   "clean-setup": { bg: "rgba(42,161,152,0.12)", color: "#2aa198", border: "rgba(42,161,152,0.25)" },
@@ -540,6 +603,7 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   stamatoudism: { bg: "rgba(108,113,196,0.10)", color: "#6c71c4", border: "rgba(108,113,196,0.25)" },
   jfsrev: { bg: "rgba(203,75,22,0.10)", color: "#cb4b16", border: "rgba(203,75,22,0.25)" },
   asymtrading: { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
+  tenet_research: { bg: "rgba(38,139,210,0.10)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
   xstock: { bg: "rgba(108,113,196,0.12)", color: "#6c71c4", border: "rgba(108,113,196,0.25)" },
 }
 
@@ -550,6 +614,7 @@ const TAG_LINKS: Record<string, string> = {
   stamatoudism: "https://x.com/stamatoudism",
   jfsrev: "https://x.com/jfsrev",
   asymtrading: "https://x.com/asymtrading",
+  tenet_research: "https://x.com/tenet_research",
 }
 
 function TagList({ tags }: { tags?: string[] }) {

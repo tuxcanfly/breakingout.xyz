@@ -165,6 +165,10 @@ export async function fetchAsymTradingMentions(): Promise<Set<string>> {
   return fetchUserMentions("asymtrading")
 }
 
+export async function fetchTenetResearchMentions(): Promise<Set<string>> {
+  return fetchUserMentions("tenet_research")
+}
+
 export async function fetchTweetsForSymbol(symbol: string): Promise<NitterResult> {
   const cacheKey = `tweets:${symbol.toUpperCase()}`
   const cached = tweetCache.get(cacheKey)

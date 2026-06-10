@@ -46,8 +46,16 @@ const ExternalLink = ({ href, children }: { href: string; children: React.ReactN
 
 const HELP_SECTIONS = [
   {
+    title: "COIL",
+    body: "Breakout setup score (0–100) from a\n2012–2026 backtest of 293k breakouts.\nThree stacked conditions:\n• Trigger — at/near the 50-day high\n• Coil — tight base (MA compression < 4\n  in units of the stock's daily range)\n• Lead — top ~11% blended momentum\nAll three together ≈ tripled 20-day\nforward returns vs unfiltered breakouts.\nGreen dot = full setup (coil tag).",
+  },
+  {
     title: "Tight",
-    body: "Price within 2% of its 20-day SMA —\nindicates low-volatility consolidation\nand potential breakout setup.",
+    body: "MA compression + distance from the\n20-day SMA, measured in ADR units.\nBelow 4 = coiled base. Tight bases beat\nloose ranges (+0.83% vs +0.53% fwd20)\nin the backtest.",
+  },
+  {
+    title: "Regime",
+    body: "Risk-On/Off = SPY above/below its\n140-day EMA. Use as an exposure dial,\nnot an entry filter — throttling new\npositions when Risk-Off roughly halved\nmax drawdown in the backtest.",
   },
   {
     title: "ADR",
@@ -74,6 +82,7 @@ const HELP_SECTIONS = [
         Algorithmic signal tags:
         {"\n"}• naaim — favorable NAAIM regime
         {"\n"}• all-ma-up — all MAs aligned bullish
+        {"\n"}• coil — full COIL setup (trigger + tight + leader)
         {"\n"}• momentum-leader — top 5% 1M return
         {"\n"}• breakout — strong + MA aligned
         {"\n"}• stage2 — up across 1M 3M 6M
@@ -91,12 +100,14 @@ const HELP_SECTIONS = [
         <ExternalLink href="https://x.com/jfsrev">@jfsrev</ExternalLink>
         {"\n"}• asymtrading — mentioned by{" "}
         <ExternalLink href="https://x.com/asymtrading">@AsymTrading</ExternalLink>
+        {"\n"}• tenet_research — mentioned by{" "}
+        <ExternalLink href="https://x.com/tenet_research">@tenet_research</ExternalLink>
       </>
     ),
   },
   {
     title: "Ranks",
-    body: "RS ranks every asset by 1M momentum\ninside the whole universe.\nSetup blends RS, MA alignment, and tightness.\nRisk blends ADR, trend state, and weakness.",
+    body: "RS ranks every asset by blended\n1M/3M/6M/1Y momentum across the universe —\nthe strongest factor in the backtest.\nSetup blends RS, MA alignment, and tightness.\nRisk blends ADR, trend state, and weakness.",
   },
   {
     title: "Returns",
@@ -294,9 +305,10 @@ function App() {
     filtered = filtered.filter((a) => a.sector === sectorFilter)
   }
 
-  const counts = {
+  const counts: Record<TabId, number> = {
     all: allAssets.length,
     stocks: data.stocks.length,
+    xstocks: data.xstocks.length,
     crypto: data.crypto.length,
     etfs: data.etfs.length,
     commodities: data.commodities.length,

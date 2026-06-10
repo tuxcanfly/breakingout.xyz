@@ -159,6 +159,9 @@ export function AssetDetail({ asset, onClose }: Props) {
             ))}
           </div>
 
+          {/* COIL setup breakdown */}
+          {asset.coilScore !== undefined && <CoilBreakdown asset={asset} />}
+
           {/* Chart */}
           <div
             className="rounded-lg border overflow-hidden"
@@ -304,6 +307,75 @@ export function AssetDetail({ asset, onClose }: Props) {
       </div>
     </div>,
     document.body
+  )
+}
+
+function CoilBreakdown({ asset }: { asset: ScreenerAsset }) {
+  const dist = asset.distToHighPct
+  const tight = asset.coilTightness
+  const rank = asset.momentumRank ?? 0
+  const checks = [
+    {
+      label: "Trigger",
+      pass: dist !== undefined && dist >= -1,
+      detail: dist !== undefined ? `${dist >= 0 ? "+" : ""}${dist.toFixed(1)}% vs 3M high` : "no data",
+      hint: "Breakouts above the 50-day high are the entry event in the study",
+    },
+    {
+      label: "Coil",
+      pass: tight !== undefined && tight < 4,
+      detail: tight !== undefined ? `tightness ${tight.toFixed(1)} (tight < 4)` : "no data",
+      hint: "Tight consolidations beat loose ranges: +0.83% vs +0.53% avg 20-day forward return",
+    },
+    {
+      label: "Lead",
+      pass: rank >= 89,
+      detail: `top ${100 - rank}% momentum (need top 11%)`,
+      hint: "Momentum leadership was the strongest factor: +1.39% vs +0.52% for the rest",
+    },
+  ]
+  const full = checks.every((c) => c.pass)
+  return (
+    <div
+      className="rounded-lg border px-4 py-3"
+      style={{
+        borderColor: full ? "rgba(133,153,0,0.35)" : "var(--sol-base2)",
+        backgroundColor: full ? "rgba(133,153,0,0.06)" : "var(--sol-base2)",
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span
+          style={{ fontSize: "10px", fontWeight: 600, color: full ? "var(--sol-green)" : "var(--sol-base01)", textTransform: "uppercase", letterSpacing: "0.04em" }}
+        >
+          COIL setup {full ? "— all conditions met" : ""}
+        </span>
+        <span className="font-bold tabular-nums" style={{ fontSize: "13px", color: full ? "var(--sol-green)" : "var(--sol-base02)" }}>
+          {asset.coilScore}/100
+        </span>
+      </div>
+      <div className="space-y-1">
+        {checks.map((c) => (
+          <div key={c.label} className="flex items-baseline gap-2" title={c.hint}>
+            <span
+              className="font-bold"
+              style={{ fontSize: "11px", width: 14, color: c.pass ? "var(--sol-green)" : "var(--sol-red)" }}
+            >
+              {c.pass ? "✓" : "✗"}
+            </span>
+            <span className="font-semibold" style={{ fontSize: "11px", color: "var(--sol-base02)", width: 52 }}>
+              {c.label}
+            </span>
+            <span className="tabular-nums" style={{ fontSize: "11px", color: "var(--sol-base01)" }}>
+              {c.detail}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: "10px", color: "var(--sol-base1)", marginTop: "6px", lineHeight: 1.4 }}>
+        Stacking all three tripled 20-day forward returns vs unfiltered breakouts
+        (S&amp;P 900 backtest, 2012–2026, survivorship-biased universe).
+      </div>
+    </div>
   )
 }
 

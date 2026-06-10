@@ -1,5 +1,5 @@
 import type { MarketRegime } from "../types"
-import { TrendingUp, TrendingDown, Gauge, Bitcoin, BarChart3 } from "lucide-react"
+import { TrendingUp, TrendingDown, Gauge, Bitcoin, BarChart3, Shield, ShieldAlert } from "lucide-react"
 
 interface Props {
   market: MarketRegime
@@ -16,6 +16,28 @@ export function MarketBar({ market, activeCategory = "stocks" }: Props) {
       }}
     >
       <div className="flex items-center justify-between flex-wrap gap-4">
+        {/* Exposure dial: SPY vs 140-day EMA */}
+        {activeCategory !== "crypto" && market.spyRegime && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-[12px]"
+            style={{
+              backgroundColor: market.spyRegime === "risk-on"
+                ? "rgba(133, 153, 0, 0.12)" : "rgba(220, 50, 47, 0.12)",
+              color: market.spyRegime === "risk-on" ? "var(--sol-green)" : "var(--sol-red)",
+              border: `1px solid ${market.spyRegime === "risk-on" ? "rgba(133,153,0,0.3)" : "rgba(220,50,47,0.3)"}`,
+            }}
+            title={`SPY is ${market.spyVsEma140 !== undefined ? `${market.spyVsEma140 >= 0 ? "+" : ""}${market.spyVsEma140}% vs` : (market.spyRegime === "risk-on" ? "above" : "below")} its 140-day EMA. Backtested as an exposure dial, not an entry filter: throttling new positions when risk-off roughly halved max drawdown (2012–2026), at the cost of less time deployed.`}
+          >
+            {market.spyRegime === "risk-on" ? <Shield className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
+            {market.spyRegime === "risk-on" ? "Risk-On" : "Risk-Off"}
+            {market.spyVsEma140 !== undefined && (
+              <span className="font-medium tabular-nums" style={{ opacity: 0.8, fontSize: "11px" }}>
+                {market.spyVsEma140 >= 0 ? "+" : ""}{market.spyVsEma140}% / 140EMA
+              </span>
+            )}
+          </div>
+        )}
+
         {/* SPY Regime */}
         {activeCategory !== "crypto" && (
           <div className="flex items-center gap-3">

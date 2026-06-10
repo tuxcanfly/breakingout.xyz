@@ -30,6 +30,9 @@ export interface ScreenerAsset {
   sectorRank?: number
   setupScore?: number
   riskScore?: number
+  coilScore?: number
+  coilTightness?: number
+  distToHighPct?: number
   trendState?: TrendState
   tags?: string[]
 }
@@ -44,6 +47,8 @@ export interface MarketRegime {
   btc200SMA?: "above" | "below"
   btc50SMA?: "above" | "below"
   gold200SMA?: "above" | "below"
+  spyRegime?: "risk-on" | "risk-off"
+  spyVsEma140?: number
 }
 
 export interface DashboardMeta {
