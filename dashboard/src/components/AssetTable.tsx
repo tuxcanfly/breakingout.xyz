@@ -15,6 +15,7 @@ interface Props {
   getTightness?: (a: ScreenerAsset) => number
   dense?: boolean
   highlight?: string
+  newSymbols?: Set<string>
   onRowClick?: (asset: ScreenerAsset) => void
 }
 
@@ -128,7 +129,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   )
 }
 
-export function AssetTable({ assets, getTightness, dense = false, highlight = "", onRowClick }: Props) {
+export function AssetTable({ assets, getTightness, dense = false, highlight = "", newSymbols, onRowClick }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("pct1M")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
@@ -378,6 +379,21 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                         title={`Tight base — MA compression ${asset.coilTightness !== undefined ? asset.coilTightness.toFixed(1) : "<4"} ADR units (research threshold: 4)`}
                       >
                         T
+                      </Badge>
+                    )}
+                    {newSymbols?.has(asset.symbol) && (
+                      <Badge
+                        variant="secondary"
+                        className="px-1 py-0"
+                        style={{
+                          backgroundColor: "rgba(220, 50, 47, 0.12)",
+                          color: "var(--sol-red)",
+                          fontSize: "9px",
+                          height: "14px",
+                        }}
+                        title="New since your last visit — coil setup or top setup score"
+                      >
+                        New
                       </Badge>
                     )}
                   </div>

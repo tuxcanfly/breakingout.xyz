@@ -5,6 +5,9 @@ import { AssetTable } from "./components/AssetTable"
 import { AssetDetail } from "./components/AssetDetail"
 import { SectorHeatmap } from "./components/SectorHeatmap"
 import { MarketBar } from "./components/MarketBar"
+import { PresetFilters } from "./components/PresetFilters"
+import { PRESETS } from "./lib/presets"
+import { useNewSymbols } from "./lib/useNewSymbols"
 import { Input } from "./components/ui/input"
 import {
   Search,
@@ -140,6 +143,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabId>("all")
   const [filter, setFilter] = useState("")
   const [sectorFilter, setSectorFilter] = useState<string | null>(null)
+  const [presetFilter, setPresetFilter] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dense, setDense] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<ScreenerAsset | null>(null)
@@ -209,6 +213,8 @@ function App() {
     el.addEventListener("keydown", onKey)
     return () => el.removeEventListener("keydown", onKey)
   }, [helpOpen])
+
+  const newSymbols = useNewSymbols(data)
 
   if (loading && !data) {
     return (
@@ -303,6 +309,21 @@ function App() {
 
   if (sectorFilter) {
     filtered = filtered.filter((a) => a.sector === sectorFilter)
+  }
+
+  const presetCounts = PRESETS.reduce(
+    (acc, p) => {
+      acc[p.id] = filtered.filter(p.test).length
+      return acc
+    },
+    {} as Record<string, number>
+  )
+
+  if (presetFilter) {
+    const preset = PRESETS.find((p) => p.id === presetFilter)
+    if (preset) {
+      filtered = filtered.filter(preset.test)
+    }
   }
 
   const counts: Record<TabId, number> = {
@@ -525,6 +546,7 @@ function App() {
                 onClick={() => {
                   setActiveTab(tab.id)
                   setSectorFilter(null)
+                  setPresetFilter(null)
                 }}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer"
                 style={{
@@ -596,6 +618,10 @@ function App() {
           </div>
         )}
 
+        <div className="mb-3">
+          <PresetFilters active={presetFilter} onChange={setPresetFilter} counts={presetCounts} />
+        </div>
+
         {loading && <SkeletonTable />}
 
         {!loading && (
@@ -604,6 +630,7 @@ function App() {
             getTightness={tightnessScore}
             dense={dense}
             highlight={filter}
+            newSymbols={newSymbols}
             onRowClick={(asset) => setSelectedAsset(asset)}
           />
         )}
