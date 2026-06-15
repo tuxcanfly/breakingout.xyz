@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import type { IntelTweet, ScreenerAsset } from "../types"
-import { MessageCircle, ExternalLink, Filter } from "lucide-react"
+import { MessageCircle, Filter } from "lucide-react"
 
 interface Props {
   tweets: IntelTweet[]
@@ -201,11 +201,94 @@ export function IntelFeed({ tweets, assetsBySymbol, onSymbolClick, onAssetOpen }
                 {renderText(t.text, assetsBySymbol, onSymbolClick, onAssetOpen)}
               </div>
               {t.symbols.length > 0 && (
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <ExternalLink size={9} style={{ color: "var(--sol-base1)" }} />
-                  <span style={{ fontSize: "10px", color: "var(--sol-base1)" }}>
-                    {t.symbols.length} ticker{t.symbols.length === 1 ? "" : "s"}
-                  </span>
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {[...new Set(t.symbols)].map((sym) => {
+                    const asset = assetsBySymbol.get(sym)
+                    if (asset) {
+                      const c = asset.conviction ?? 0
+                      const convColor = c >= 80 ? "var(--sol-green)" : c >= 65 ? "var(--sol-blue)" : "var(--sol-yellow)"
+                      const change = asset.change24h ?? 0
+                      return (
+                        <button
+                          key={sym}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onAssetOpen(asset)
+                          }}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-colors hover:brightness-95"
+                          style={{
+                            backgroundColor: "var(--sol-base3)",
+                            border: "1px solid var(--sol-base1)",
+                          }}
+                          title={`${asset.name} — click for detail`}
+                        >
+                          <span
+                            className="font-bold"
+                            style={{
+                              color: "var(--sol-base02)",
+                              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                              fontSize: "10px",
+                            }}
+                          >
+                            {asset.symbol}
+                          </span>
+                          <span className="tabular-nums" style={{ color: "var(--sol-base01)", fontSize: "10px" }}>
+                            {asset.price?.toFixed(2) ?? "—"}
+                          </span>
+                          <span
+                            className="tabular-nums font-medium"
+                            style={{
+                              color: change >= 0 ? "var(--sol-green)" : "var(--sol-red)",
+                              fontSize: "10px",
+                            }}
+                          >
+                            {change >= 0 ? "+" : ""}{change.toFixed(1)}%
+                          </span>
+                          {c > 0 && (
+                            <span
+                              className="px-1 py-0 rounded tabular-nums font-bold"
+                              style={{
+                                fontSize: "9px",
+                                color: convColor,
+                                backgroundColor: "var(--sol-base2)",
+                                border: `1px solid ${convColor}`,
+                              }}
+                            >
+                              {c}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    }
+                    return (
+                      <button
+                        key={sym}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          onSymbolClick(sym)
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer transition-colors hover:brightness-95"
+                        style={{
+                          backgroundColor: "var(--sol-base3)",
+                          border: "1px solid var(--sol-base1)",
+                        }}
+                        title={`$${sym} — filter table`}
+                      >
+                        <span
+                          className="font-semibold"
+                          style={{
+                            color: "var(--sol-base01)",
+                            fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                            fontSize: "10px",
+                          }}
+                        >
+                          ${sym}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </a>

@@ -18,6 +18,7 @@ export function PresetFilters({ active, onChange, counts }: PresetFiltersProps) 
       {PRESETS.map((preset) => {
         const isActive = active === preset.id
         const count = counts[preset.id] ?? 0
+        if (count === 0 && !isActive) return null
         return (
           <button
             key={preset.id}

@@ -5,6 +5,7 @@ import { coilTightness, computeRsi } from "./indicators.js"
 export interface YahooAssetSeed {
   symbol: string
   yahooSymbol?: string
+  fallbackSymbols?: string[]
   name?: string
   category: AssetCategory
   displaySymbol?: string
@@ -40,7 +41,15 @@ export async function fetchYahooAssets(seeds: YahooAssetSeed[]): Promise<Screene
 }
 
 async function fetchYahooAsset(seed: YahooAssetSeed): Promise<ScreenerAsset | null> {
-  const yahooSymbol = seed.yahooSymbol || seed.symbol
+  const symbols = [seed.yahooSymbol || seed.symbol, ...(seed.fallbackSymbols || [])]
+  for (const yahooSymbol of symbols) {
+    const result = await tryFetchYahoo(yahooSymbol, seed)
+    if (result) return result
+  }
+  return null
+}
+
+async function tryFetchYahoo(yahooSymbol: string, seed: YahooAssetSeed): Promise<ScreenerAsset | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=18mo&interval=1d`
   const res = await fetch(url, {
     headers: { "User-Agent": "breakingout.xyz/1.0" },

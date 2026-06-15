@@ -15,7 +15,7 @@ import {
   fetchTrackedMentionsMap,
 } from "./nitter.js"
 import { fetchTopCryptoSymbols } from "./binance.js"
-import { SP500_STOCKS, EXTRA_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
+import { SP500_STOCKS, EXTRA_STOCKS, EUROPEAN_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
 
 interface CacheEntry<T> { data: T; timestamp: number }
 const cache = new Map<string, CacheEntry<unknown>>()
@@ -172,6 +172,16 @@ async function fetchStocks(): Promise<{ stocks: ScreenerAsset[]; xstocks: Screen
     if (missingFromTV.length > 0) {
       const yahooFallback = await fetchYahooAssets(yahooSeeds(missingFromTV, "stocks"))
       assets = mergeAssets(assets, yahooFallback)
+    }
+
+    // European stocks — not on US TV scanner, fetched via Yahoo with exchange suffix
+    const euSymbols = new Set(assets.map((a) => a.symbol))
+    const missingEU = EUROPEAN_STOCKS.filter((e) => !euSymbols.has(e.symbol))
+    if (missingEU.length > 0) {
+      const euAssets = await fetchYahooAssets(
+        missingEU.map((e) => ({ symbol: e.symbol, yahooSymbol: e.yahooSymbol, category: "stocks" as AssetCategory }))
+      )
+      assets = mergeAssets(assets, euAssets)
     }
 
     // Merge xStock metadata into underlying stocks
@@ -465,6 +475,19 @@ function scoreCoil(a: ScreenerAsset): number {
 
 function computeSignals(assets: ScreenerAsset[], market: MarketRegime): ScreenerAsset[] {
   return assets.map((a) => {
+    // ETFs aren't breakout candidates — skip COIL / setup / conviction scoring.
+    if (a.category === "etfs") {
+      return {
+        ...a,
+        momentumRank: 0,
+        categoryRank: 0,
+        sectorRank: 0,
+        setupScore: 0,
+        riskScore: 0,
+        coilScore: 0,
+        conviction: 0,
+      }
+    }
     const sectorPool = assets.filter((x) => x.sector === a.sector)
     const categoryPool = assets.filter((x) => x.category === a.category)
     const withRanks: ScreenerAsset = {
@@ -494,6 +517,8 @@ function computeTags(
   const pcts = allAssets.map((a) => a.pct1M).filter((p) => !isNaN(p))
   const top5 = pcts.length ? pcts.sort((a, b) => b - a)[Math.floor(pcts.length * 0.05)] || 20 : 20
   return assets.map((a) => {
+    // ETFs don't get breakout/trading tags.
+    if (a.category === "etfs") return a
     const t: string[] = []
     if (market.naaim >= 70 && market.naaim <= 90) t.push("naaim")
     else if (market.naaim > 90) t.push("naaim-extreme")
@@ -580,13 +605,17 @@ export async function fetchAllAssets() {
   }
   let xSurfacedAssets: ScreenerAsset[] = []
   if (xCandidates.length > 0) {
+    // European exchange suffixes to try when bare symbol doesn't resolve.
+    // Order: London (.L), Germany (.DE), Paris (.PA), Stockholm (.ST),
+    // Amsterdam (.AS), Milan (.MI), Brussels (.BR), Switzerland (.SW).
+    const EU_SUFFIXES = [".L", ".DE", ".PA", ".ST", ".AS", ".MI", ".BR", ".SW"]
     xSurfacedAssets = (await fetchYahooAssets(
-      xCandidates.map((s) => ({ symbol: s, category: "stocks" as AssetCategory }))
+      xCandidates.map((s) => ({
+        symbol: s,
+        category: "stocks" as AssetCategory,
+        fallbackSymbols: EU_SUFFIXES.map((suf) => `${s}${suf}`),
+      }))
     )).map((a) => ({ ...a, xSurfaced: true }))
-      // Only auto-add tickers with a known sector classification.
-      // Cashtags that resolve to unclassified Yahoo symbols (not in
-      // SECTOR_MAP) are excluded to keep the universe clean.
-      .filter((a) => a.subsector !== "Unclassified")
   }
 
   const baseStocks = [...stocks, ...xSurfacedAssets]

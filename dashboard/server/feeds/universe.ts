@@ -54,6 +54,18 @@ export const SP500_STOCKS = [
 ]
 
 // Additional liquid non-S&P names for broader coverage
+// European stocks tracked by the community — TradingView's US scanner won't
+// have these, so they're resolved via Yahoo fallback with exchange suffixes.
+export const EUROPEAN_STOCKS: { symbol: string; yahooSymbol: string }[] = [
+  { symbol: "SIVE", yahooSymbol: "SIVE.ST" },
+  { symbol: "LPK", yahooSymbol: "LPK.DE" },
+  { symbol: "SOI", yahooSymbol: "SOI.PA" },
+  { symbol: "RPI", yahooSymbol: "RPI.L" },
+  { symbol: "IQE", yahooSymbol: "IQE.L" },
+  { symbol: "ALRIB", yahooSymbol: "ALRIB.PA" },
+  { symbol: "XFAB", yahooSymbol: "XFAB.PA" },
+]
+
 export const EXTRA_STOCKS = [
   "AAOI","ABNB","ACHR","AEHR","AFRM","AI","ALAB","AMC","AMPG","AMSC",
   "ANF","AOSL","ARM","ASX","ASTS","ASYS","AXSM","AXTI","BB","BBAI",
@@ -66,10 +78,10 @@ export const EXTRA_STOCKS = [
   "MARA","MDB","MEDP","MOD","MRNA","MSTR","NBIS","NET","NKLA","NU",
   "NVTS","OKLO","OKTA","ONDS","ON",
   "OPEN","PLUG","POET","POWI","QBTS","QUBT","RBLX","RDDT","RELL","RGTI","RIOT",
-  "RIVN","RKLB","ROKU","RXRX","SEDG","SHOP","SIVE","SLNH","SMR",
-  "SNAP","SOFI","SOI","SOUN","SPOT",
+  "RIVN","RKLB","ROKU","RXRX","SEDG","SHOP","SLNH","SMR",
+  "SNAP","SOFI","SOUN","SPOT",
   "SQ","TEAM","TOST","TSEM","TWLO","U","UEC","UPST","VKTX","VFS","VICR","VIVO",
-  "VSH","WING","WOLF","WULF","XFAB","YSS","ZS",
+  "VSH","WING","WOLF","WULF","YSS","ZS",
 ]
 
 // ── ETF universe ──────────────────────────────────────────────────────────

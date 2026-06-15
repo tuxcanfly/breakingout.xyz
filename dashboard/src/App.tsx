@@ -8,6 +8,7 @@ import { MarketBar } from "./components/MarketBar"
 import { PresetFilters } from "./components/PresetFilters"
 import { ConvictionStrip } from "./components/ConvictionStrip"
 import { IntelFeed } from "./components/IntelFeed"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./components/ui/sheet"
 import { PRESETS } from "./lib/presets"
 import { useNewSymbols } from "./lib/useNewSymbols"
 import { Input } from "./components/ui/input"
@@ -18,6 +19,7 @@ import {
   RefreshCw,
   LayoutList,
   LayoutGrid,
+  Radio,
 } from "lucide-react"
 
 function tightnessScore(a: ScreenerAsset): number {
@@ -28,11 +30,10 @@ function tightnessScore(a: ScreenerAsset): number {
   return alignPts + adrPts
 }
 
-type TabId = AssetCategory | "all" | "intel"
+type TabId = AssetCategory | "all"
 
 const tabs: { id: TabId; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "intel", label: "Intel" },
   { id: "stocks", label: "Stocks" },
   { id: "crypto", label: "Crypto" },
   { id: "etfs", label: "ETFs" },
@@ -172,6 +173,7 @@ function App() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [dense, setDense] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<ScreenerAsset | null>(null)
+  const [showIntel, setShowIntel] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const helpRef = useRef<HTMLDivElement>(null)
 
@@ -323,8 +325,7 @@ function App() {
   const assetsBySymbol = new Map<string, ScreenerAsset>()
   for (const a of allAssets) assetsBySymbol.set(a.symbol.toUpperCase(), a)
 
-  const isIntel = activeTab === "intel"
-  const activeAssets: ScreenerAsset[] = isIntel ? [] : activeTab === "all" ? allAssets : data[activeTab]
+  const activeAssets: ScreenerAsset[] = activeTab === "all" ? allAssets : data[activeTab]
 
   let filtered = activeAssets.filter((a) => {
     const q = filter.toLowerCase()
@@ -360,7 +361,6 @@ function App() {
 
   const counts: Record<TabId, number> = {
     all: allAssets.length,
-    intel: data.intel?.length ?? 0,
     stocks: data.stocks.length,
     xstocks: data.xstocks.length,
     crypto: data.crypto.length,
@@ -534,6 +534,35 @@ function App() {
                 />
               </div>
 
+              {/* Intel toggle */}
+              <button
+                onClick={() => setShowIntel(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer"
+                style={{
+                  fontSize: "12px",
+                  backgroundColor: showIntel ? "var(--sol-blue)" : "var(--sol-base2)",
+                  color: showIntel ? "white" : "var(--sol-base01)",
+                  border: "1px solid var(--sol-base1)",
+                }}
+                title="Intel feed — tracked account tweets"
+              >
+                <Radio size={13} />
+                Intel
+                {(data?.intel?.length ?? 0) > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center px-1 py-0 rounded-full tabular-nums"
+                    style={{
+                      fontSize: "9px",
+                      minWidth: 16,
+                      height: 14,
+                      backgroundColor: showIntel ? "rgba(255,255,255,0.2)" : "var(--sol-base3)",
+                    }}
+                  >
+                    {data!.intel!.length}
+                  </span>
+                )}
+              </button>
+
               {/* Utility buttons */}
               <div
                 className="flex items-center gap-0.5 rounded-lg border p-0.5"
@@ -625,8 +654,78 @@ function App() {
       <main className="mx-auto px-3 py-3" style={{ maxWidth: "1440px" }}>
         <MarketBar market={data.market} activeCategory={activeTab} />
 
-        {isIntel ? (
-          <div className="mt-3">
+        <div className="mt-3">
+          <ConvictionStrip
+            assets={allAssets}
+            market={data.market}
+            onPick={(asset) => setSelectedAsset(asset)}
+          />
+        </div>
+
+        <div className="mt-1">
+          <SectorHeatmap
+            assets={filtered}
+            onSelectSector={(s) => setSectorFilter((prev) => (prev === s ? null : s))}
+            activeSector={sectorFilter}
+          />
+        </div>
+
+        {sectorFilter && (
+          <div
+            className="mb-2 flex items-center gap-2"
+            style={{ fontSize: "11px", color: "var(--sol-base01)" }}
+          >
+            <span>
+              Filtering by <strong style={{ color: "var(--sol-base02)" }}>{sectorFilter}</strong>
+            </span>
+            <button
+              onClick={() => setSectorFilter(null)}
+              className="px-1.5 py-0.5 rounded cursor-pointer"
+              style={{ backgroundColor: "var(--sol-base2)", fontSize: "10px" }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
+        <div className="mb-3">
+          <PresetFilters active={presetFilter} onChange={setPresetFilter} counts={presetCounts} />
+        </div>
+
+        {loading && <SkeletonTable />}
+
+        {!loading && (
+          <AssetTable
+            assets={filtered}
+            getTightness={tightnessScore}
+            dense={dense}
+            highlight={filter}
+            newSymbols={newSymbols}
+            onRowClick={(asset) => setSelectedAsset(asset)}
+          />
+        )}
+      </main>
+
+      {/* Intel bottom sheet */}
+      <Sheet open={showIntel} onOpenChange={setShowIntel}>
+        <SheetContent
+          side="bottom"
+          className="p-0 overflow-y-auto"
+          style={{ backgroundColor: "var(--sol-base3)", borderColor: "var(--sol-base2)" }}
+        >
+          <SheetHeader className="flex flex-row items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--sol-base2)" }}>
+            <SheetTitle className="flex items-center gap-2">
+              <Radio size={14} style={{ color: "var(--sol-blue)" }} />
+              <span style={{ color: "var(--sol-base02)", fontSize: "13px" }}>Intel</span>
+              <span
+                className="inline-flex items-center justify-center px-1.5 py-0 rounded-full tabular-nums font-normal"
+                style={{ backgroundColor: "var(--sol-base2)", fontSize: "10px", color: "var(--sol-base01)" }}
+              >
+                {data.intel?.length ?? 0}
+              </span>
+            </SheetTitle>
+          </SheetHeader>
+          <div className="px-3 pb-4">
             <IntelFeed
               tweets={data.intel ?? []}
               assetsBySymbol={assetsBySymbol}
@@ -635,65 +734,16 @@ function App() {
                 setActiveTab("all")
                 setSectorFilter(null)
                 setPresetFilter(null)
+                setShowIntel(false)
               }}
-              onAssetOpen={(asset) => setSelectedAsset(asset)}
+              onAssetOpen={(asset) => {
+                setSelectedAsset(asset)
+                setShowIntel(false)
+              }}
             />
           </div>
-        ) : (
-          <>
-            <div className="mt-3">
-              <ConvictionStrip
-                assets={allAssets}
-                market={data.market}
-                onPick={(asset) => setSelectedAsset(asset)}
-              />
-            </div>
-
-            <div className="mt-1">
-              <SectorHeatmap
-                assets={filtered}
-                onSelectSector={(s) => setSectorFilter((prev) => (prev === s ? null : s))}
-                activeSector={sectorFilter}
-              />
-            </div>
-
-            {sectorFilter && (
-              <div
-                className="mb-2 flex items-center gap-2"
-                style={{ fontSize: "11px", color: "var(--sol-base01)" }}
-              >
-                <span>
-                  Filtering by <strong style={{ color: "var(--sol-base02)" }}>{sectorFilter}</strong>
-                </span>
-                <button
-                  onClick={() => setSectorFilter(null)}
-                  className="px-1.5 py-0.5 rounded cursor-pointer"
-                  style={{ backgroundColor: "var(--sol-base2)", fontSize: "10px" }}
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-
-            <div className="mb-3">
-              <PresetFilters active={presetFilter} onChange={setPresetFilter} counts={presetCounts} />
-            </div>
-
-            {loading && <SkeletonTable />}
-
-            {!loading && (
-              <AssetTable
-                assets={filtered}
-                getTightness={tightnessScore}
-                dense={dense}
-                highlight={filter}
-                newSymbols={newSymbols}
-                onRowClick={(asset) => setSelectedAsset(asset)}
-              />
-            )}
-          </>
-        )}
-      </main>
+        </SheetContent>
+      </Sheet>
 
       <AssetDetail key={selectedAsset?.symbol} asset={selectedAsset} onClose={() => setSelectedAsset(null)} />
     </div>
