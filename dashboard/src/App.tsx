@@ -6,6 +6,8 @@ import { AssetDetail } from "./components/AssetDetail"
 import { SectorHeatmap } from "./components/SectorHeatmap"
 import { MarketBar } from "./components/MarketBar"
 import { PresetFilters } from "./components/PresetFilters"
+import { ConvictionStrip } from "./components/ConvictionStrip"
+import { IntelFeed } from "./components/IntelFeed"
 import { PRESETS } from "./lib/presets"
 import { useNewSymbols } from "./lib/useNewSymbols"
 import { Input } from "./components/ui/input"
@@ -26,10 +28,11 @@ function tightnessScore(a: ScreenerAsset): number {
   return alignPts + adrPts
 }
 
-type TabId = AssetCategory | "all"
+type TabId = AssetCategory | "all" | "intel"
 
 const tabs: { id: TabId; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "intel", label: "Intel" },
   { id: "stocks", label: "Stocks" },
   { id: "crypto", label: "Crypto" },
   { id: "etfs", label: "ETFs" },
@@ -49,8 +52,31 @@ const ExternalLink = ({ href, children }: { href: string; children: React.ReactN
 
 const HELP_SECTIONS = [
   {
+    title: "Conviction",
+    body: "The actionable composite (0–100) surfaced in\nthe Top Conviction strip. Blends COIL, relative\nstrength, and setup, then gates by SPY regime\nand risk. Sort by this when you want trades,\nnot just screens.",
+  },
+  {
+    title: "Intel",
+    body: "A curated feed of recent posts from 7 tracked\nX accounts. $TICKER chips are clickable —\nin-universe names open detail; others jump to\nthe table with that filter. Mentions also tag\nmatching assets and seed X-surfaced auto-add.",
+  },
+  {
     title: "COIL",
     body: "Breakout setup score (0–100) from a\n2012–2026 backtest of 293k breakouts.\nThree stacked conditions:\n• Trigger — at/near the 50-day high\n• Coil — tight base (MA compression < 4\n  in units of the stock's daily range)\n• Lead — top ~11% blended momentum\nAll three together ≈ tripled 20-day\nforward returns vs unfiltered breakouts.\nGreen dot = full setup (coil tag).",
+  },
+  {
+    title: "Unusual signals",
+    body: (
+      <>
+        Hidden/leading signals (tags + presets):
+        {"\n"}• <strong>loaded-spring</strong> — tight base near 3M high, hasn't broken out
+        {"\n"}• <strong>quiet-coil</strong> — low ADR (bottom quartile) at the highs
+        {"\n"}• <strong>accelerating</strong> — 1M return beating the 3M pace
+        {"\n"}• <strong>regime-aligned</strong> — trend matches SPY risk-on/off
+        {"\n"}• <strong>reversal-watch</strong> — weak RS but MA10 up off oversold RSI
+        {"\n"}• <strong>rsi-oversold</strong> / <strong>rsi-overbought</strong> — RSI ≤ 30 / ≥ 70
+        {"\n"}• <strong>x-surfaced</strong> — auto-added from tracked-account mentions
+      </>
+    ),
   },
   {
     title: "Tight",
@@ -86,6 +112,7 @@ const HELP_SECTIONS = [
         {"\n"}• naaim — favorable NAAIM regime
         {"\n"}• all-ma-up — all MAs aligned bullish
         {"\n"}• coil — full COIL setup (trigger + tight + leader)
+        {"\n"}• actionable — conviction ≥ 70 with risk ≤ 55
         {"\n"}• momentum-leader — top 5% 1M return
         {"\n"}• breakout — strong + MA aligned
         {"\n"}• stage2 — up across 1M 3M 6M
@@ -93,8 +120,6 @@ const HELP_SECTIONS = [
         {"\n"}• xstock — tokenized equity available
         {"\n"}• aleabitoreddit — mentioned by{" "}
         <ExternalLink href="https://x.com/aleabitoreddit">@aleabitoreddit</ExternalLink>
-        {"\n"}• aschenbrenner — mentioned by{" "}
-        <ExternalLink href="https://x.com/leopoldasch">@leopoldasch</ExternalLink>
         {"\n"}• realsimpleariel — mentioned by{" "}
         <ExternalLink href="https://x.com/realsimpleariel">@RealSimpleAriel</ExternalLink>
         {"\n"}• stamatoudism — mentioned by{" "}
@@ -292,7 +317,14 @@ function App() {
     ...data.etfs,
     ...data.commodities,
   ]
-  const activeAssets = activeTab === "all" ? allAssets : data[activeTab]
+
+  // Symbol → asset lookup so the Intel feed can turn $TICKER chips into
+  // clickable jumps to the right asset detail.
+  const assetsBySymbol = new Map<string, ScreenerAsset>()
+  for (const a of allAssets) assetsBySymbol.set(a.symbol.toUpperCase(), a)
+
+  const isIntel = activeTab === "intel"
+  const activeAssets: ScreenerAsset[] = isIntel ? [] : activeTab === "all" ? allAssets : data[activeTab]
 
   let filtered = activeAssets.filter((a) => {
     const q = filter.toLowerCase()
@@ -328,6 +360,7 @@ function App() {
 
   const counts: Record<TabId, number> = {
     all: allAssets.length,
+    intel: data.intel?.length ?? 0,
     stocks: data.stocks.length,
     xstocks: data.xstocks.length,
     crypto: data.crypto.length,
@@ -592,47 +625,73 @@ function App() {
       <main className="mx-auto px-3 py-3" style={{ maxWidth: "1440px" }}>
         <MarketBar market={data.market} activeCategory={activeTab} />
 
-        <div className="mt-3">
-          <SectorHeatmap
-            assets={filtered}
-            onSelectSector={(s) => setSectorFilter((prev) => (prev === s ? null : s))}
-            activeSector={sectorFilter}
-          />
-        </div>
-
-        {sectorFilter && (
-          <div
-            className="mb-2 flex items-center gap-2"
-            style={{ fontSize: "11px", color: "var(--sol-base01)" }}
-          >
-            <span>
-              Filtering by <strong style={{ color: "var(--sol-base02)" }}>{sectorFilter}</strong>
-            </span>
-            <button
-              onClick={() => setSectorFilter(null)}
-              className="px-1.5 py-0.5 rounded cursor-pointer"
-              style={{ backgroundColor: "var(--sol-base2)", fontSize: "10px" }}
-            >
-              Clear
-            </button>
+        {isIntel ? (
+          <div className="mt-3">
+            <IntelFeed
+              tweets={data.intel ?? []}
+              assetsBySymbol={assetsBySymbol}
+              onSymbolClick={(sym) => {
+                setFilter(sym)
+                setActiveTab("all")
+                setSectorFilter(null)
+                setPresetFilter(null)
+              }}
+              onAssetOpen={(asset) => setSelectedAsset(asset)}
+            />
           </div>
-        )}
+        ) : (
+          <>
+            <div className="mt-3">
+              <ConvictionStrip
+                assets={allAssets}
+                market={data.market}
+                onPick={(asset) => setSelectedAsset(asset)}
+              />
+            </div>
 
-        <div className="mb-3">
-          <PresetFilters active={presetFilter} onChange={setPresetFilter} counts={presetCounts} />
-        </div>
+            <div className="mt-1">
+              <SectorHeatmap
+                assets={filtered}
+                onSelectSector={(s) => setSectorFilter((prev) => (prev === s ? null : s))}
+                activeSector={sectorFilter}
+              />
+            </div>
 
-        {loading && <SkeletonTable />}
+            {sectorFilter && (
+              <div
+                className="mb-2 flex items-center gap-2"
+                style={{ fontSize: "11px", color: "var(--sol-base01)" }}
+              >
+                <span>
+                  Filtering by <strong style={{ color: "var(--sol-base02)" }}>{sectorFilter}</strong>
+                </span>
+                <button
+                  onClick={() => setSectorFilter(null)}
+                  className="px-1.5 py-0.5 rounded cursor-pointer"
+                  style={{ backgroundColor: "var(--sol-base2)", fontSize: "10px" }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
 
-        {!loading && (
-          <AssetTable
-            assets={filtered}
-            getTightness={tightnessScore}
-            dense={dense}
-            highlight={filter}
-            newSymbols={newSymbols}
-            onRowClick={(asset) => setSelectedAsset(asset)}
-          />
+            <div className="mb-3">
+              <PresetFilters active={presetFilter} onChange={setPresetFilter} counts={presetCounts} />
+            </div>
+
+            {loading && <SkeletonTable />}
+
+            {!loading && (
+              <AssetTable
+                assets={filtered}
+                getTightness={tightnessScore}
+                dense={dense}
+                highlight={filter}
+                newSymbols={newSymbols}
+                onRowClick={(asset) => setSelectedAsset(asset)}
+              />
+            )}
+          </>
         )}
       </main>
 

@@ -46,7 +46,7 @@ export function classifyAsset(symbol: string, category: AssetCategory, name = ""
 
   // Crypto has its own sector taxonomy
   if (category === "crypto") {
-    return CRYPTO_SECTORS[s] || { sector: "Crypto", subsector: "Other" }
+    return CRYPTO_SECTORS[s] || { sector: "Crypto", subsector: "Unclassified" }
   }
 
   // Check the comprehensive SECTOR_MAP first (covers S&P 500 + ETFs + extras)

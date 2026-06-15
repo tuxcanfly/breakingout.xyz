@@ -1,6 +1,6 @@
 import type { AssetCategory, ScreenerAsset } from "../types.js"
 import { classifyAsset } from "./taxonomy.js"
-import { coilTightness } from "./indicators.js"
+import { coilTightness, computeRsi } from "./indicators.js"
 
 export interface YahooAssetSeed {
   symbol: string
@@ -79,6 +79,7 @@ async function fetchYahooAsset(seed: YahooAssetSeed): Promise<ScreenerAsset | nu
   )
   const high3M = Math.max(...bars.slice(-63).map((b) => b.high))
   const tightness = coilTightness(close, sma10, sma20, sma50, adrPercent)
+  const rsi = computeRsi(bars.map((b) => b.close))
   const volume = average(bars.slice(-20).map((b) => b.volume || 0))
   const up = (s: number) => close >= s ? "up" as const : "down" as const
   const classification = classifyAsset(seed.underlyingSymbol || seed.symbol, seed.category, seed.name)
@@ -105,6 +106,7 @@ async function fetchYahooAsset(seed: YahooAssetSeed): Promise<ScreenerAsset | nu
     pct1Y: pctChange(bars, 252),
     price: round(close),
     change24h: pctChange(bars, 1),
+    rsi: rsi,
     underlyingSymbol: seed.underlyingSymbol,
     tokenSymbol: seed.tokenSymbol,
     venue: seed.venue || "Yahoo",

@@ -34,6 +34,10 @@ export interface ScreenerAsset {
   coilTightness?: number
   distToHighPct?: number
   trendState?: TrendState
+  rsi?: number
+  conviction?: number
+  xSurfaced?: boolean
+  mentionedBy?: string[]
   tags?: string[]
 }
 
@@ -65,7 +69,18 @@ export interface DashboardData {
   commodities: ScreenerAsset[]
   market: MarketRegime
   lastUpdated: string
+  intel?: IntelTweet[]
   _meta?: DashboardMeta
+}
+
+export interface IntelTweet {
+  author: string
+  authorHandle: string
+  authorUrl: string
+  text: string
+  date: string
+  link: string
+  symbols: string[]
 }
 
 export interface NitterTweet {

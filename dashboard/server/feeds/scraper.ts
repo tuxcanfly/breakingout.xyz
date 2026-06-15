@@ -1,9 +1,20 @@
-import type { ScreenerAsset, MarketRegime, AssetCategory } from "../types.js"
+import type { ScreenerAsset, MarketRegime, AssetCategory, IntelTweet } from "../types.js"
 import { classifyAsset } from "./taxonomy.js"
-import { coilTightness } from "./indicators.js"
+import {
+  coilTightness,
+  isLoadedSpring,
+  isAccelerating,
+  isQuietCoil,
+  isRegimeAligned,
+  isReversalWatch,
+} from "./indicators.js"
 import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
 import { XSTOCK_PRODUCTS } from "./xstocks.js"
-import { fetchAleabitoMentions, fetchAshenbrennerMentions, fetchRealSimpleArielMentions, fetchStamatoudismMentions, fetchJfsrevMentions, fetchAsymTradingMentions, fetchTenetResearchMentions } from "./nitter.js"
+import {
+  fetchTrackedFeed,
+  fetchTrackedMentionsMap,
+} from "./nitter.js"
+import { fetchTopCryptoSymbols } from "./binance.js"
 import { SP500_STOCKS, EXTRA_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
 
 interface CacheEntry<T> { data: T; timestamp: number }
@@ -93,6 +104,7 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetM
   const vol = (v[2] as number) || 0
   const sma10 = (v[13] as number) || 0
   const high3M = (v[14] as number) || 0
+  const rsi = (v[11] as number) || undefined
   const up = (s: number) => close >= s ? "up" as const : "down" as const
   const displaySymbol = meta.displaySymbol || symbol
   const classification = classifyAsset(meta.underlyingSymbol || symbol, cat, meta.name)
@@ -120,6 +132,7 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetM
     pct1Y: parseFloat(pct1Y.toFixed(1)),
     price: close,
     change24h: parseFloat(((v[12] as number) || 0).toFixed(1)),
+    rsi,
     underlyingSymbol: meta.underlyingSymbol,
     tokenSymbol: meta.tokenSymbol,
     venue: meta.venue,
@@ -254,16 +267,21 @@ async function fetchCommodities(): Promise<ScreenerAsset[]> {
   }
 }
 
-// ── Crypto fetcher (TradingView crypto scanner) ────────────────────────────
+// ── Crypto fetcher (TradingView crypto scanner + Binance top-N) ────────────
 
 async function fetchCrypto(): Promise<ScreenerAsset[]> {
   const cached = getCached<ScreenerAsset[]>("crypto")
   if (cached) return cached
 
   try {
+    // Dynamic universe: top USDT pairs by Binance 24h volume, merged with the
+    // static baseline so majors are always present even if Binance is down.
+    const dynamicSymbols = await fetchTopCryptoSymbols(120)
+    const cryptoTickers = [...new Set([...CRYPTO_UNIVERSE, ...dynamicSymbols])]
+
     let assets: ScreenerAsset[] = []
     try {
-      const tvTickers = CRYPTO_UNIVERSE.map((s) => `BINANCE:${s}`)
+      const tvTickers = cryptoTickers.map((s) => `BINANCE:${s}`)
       const rows = await scanTV("https://scanner.tradingview.com/crypto/scan", tvTickers)
       assets = rows.filter((r) => r.v[1] > 0).map((r) => {
         const raw = r.symbol.replace("USDT", "").replace("PERP", "")
@@ -277,6 +295,7 @@ async function fetchCrypto(): Promise<ScreenerAsset[]> {
     const extraCrypto: YahooAssetSeed[] = [
       { symbol: "LEO", yahooSymbol: "LEO-USD", name: "UNUS SED LEO", category: "crypto" },
       { symbol: "BGB", yahooSymbol: "BGB-USD", name: "Bitget Token", category: "crypto" },
+      { symbol: "TON", yahooSymbol: "TON114-USD", name: "Toncoin", category: "crypto" },
     ]
     const yahooFallback = await fetchYahooAssets(extraCrypto)
     assets = mergeAssets(assets, yahooFallback)
@@ -402,6 +421,26 @@ function scoreRisk(a: ScreenerAsset): number {
   return Math.round(Math.min(100, volatility + trendPenalty + weakness))
 }
 
+// Conviction (0–100): the actionable composite. Blends COIL, relative strength,
+// and setup quality, then applies regime and risk gates so the surfaced names
+// are the ones actually tradeable in the current market. This is what the hero
+// strip ranks on — deliberately not the same as COIL or RS alone.
+function scoreConviction(a: ScreenerAsset, market: MarketRegime): number {
+  const coil = a.coilScore ?? 0
+  const rs = a.momentumRank ?? 50
+  const setup = a.setupScore ?? 0
+  let raw = coil * 0.4 + rs * 0.3 + setup * 0.3
+  const riskOn = (market.spyRegime ?? "risk-on") === "risk-on"
+  // Regime gate: in risk-off, only uptrending names hold conviction.
+  if (!riskOn && a.trendState !== "uptrend") raw *= 0.5
+  // Risk gate: genuinely risky setups can't score top conviction.
+  if ((a.riskScore ?? 0) > 60) raw *= 0.6
+  if (a.trendState === "downtrend") raw *= 0.4
+  // Small lift for the about-to-move setups.
+  if (isLoadedSpring(a)) raw += 5
+  return Math.round(Math.min(100, Math.max(0, raw)))
+}
+
 // Blended cross-sectional momentum over 1/3/6/12-month horizons — the
 // strongest factor in the breakout study (fwd60 spread 4.8% vs 2.5% for
 // top-ranked names vs the rest).
@@ -424,7 +463,7 @@ function scoreCoil(a: ScreenerAsset): number {
   return Math.round(Math.min(100, lead + tight + trigger))
 }
 
-function computeSignals(assets: ScreenerAsset[]): ScreenerAsset[] {
+function computeSignals(assets: ScreenerAsset[], market: MarketRegime): ScreenerAsset[] {
   return assets.map((a) => {
     const sectorPool = assets.filter((x) => x.sector === a.sector)
     const categoryPool = assets.filter((x) => x.category === a.category)
@@ -440,6 +479,7 @@ function computeSignals(assets: ScreenerAsset[]): ScreenerAsset[] {
       setupScore: scoreSetup(withRanks),
       riskScore: scoreRisk(withRanks),
       coilScore: scoreCoil(withRanks),
+      conviction: scoreConviction(withRanks, market),
     }
   })
 }
@@ -448,7 +488,8 @@ function computeTags(
   assets: ScreenerAsset[],
   market: MarketRegime,
   allAssets: ScreenerAsset[],
-  mentions: Record<string, Set<string>>
+  mentionsBySymbol: Map<string, string[]>,
+  adrP25ByCategory: Record<string, number>,
 ): ScreenerAsset[] {
   const pcts = allAssets.map((a) => a.pct1M).filter((p) => !isNaN(p))
   const top5 = pcts.length ? pcts.sort((a, b) => b - a)[Math.floor(pcts.length * 0.05)] || 20 : 20
@@ -481,43 +522,98 @@ function computeTags(
     ) t.push("coil")
     if (a.trendState === "transition") t.push("transition")
     if (a.trendState === "downtrend") t.push("avoid")
-    // Mention tags based on actual X accounts
-    for (const [tag, symbols] of Object.entries(mentions)) {
-      if (symbols.has(a.symbol)) t.push(tag)
+
+    // ── Unusual / hidden signals ─────────────────────────────────────────
+    if (a.rsi !== undefined) {
+      if (a.rsi >= 70) t.push("rsi-overbought")
+      else if (a.rsi <= 30) t.push("rsi-oversold")
+    }
+    if (isLoadedSpring(a)) t.push("loaded-spring")
+    if (isAccelerating(a)) t.push("accelerating")
+    if (isQuietCoil(a, adrP25ByCategory[a.category] ?? 0)) t.push("quiet-coil")
+    if (isRegimeAligned(a, market)) t.push("regime-aligned")
+    if (isReversalWatch(a)) t.push("reversal-watch")
+    if ((a.conviction || 0) >= 70 && (a.riskScore || 100) <= 55) t.push("actionable")
+    if (a.xSurfaced) t.push("x-surfaced")
+
+    // Mention tags based on tracked X accounts
+    const mentioners = mentionsBySymbol.get(a.symbol)
+    if (mentioners && mentioners.length > 0) {
+      for (const tag of mentioners) t.push(tag)
     }
     if (a.tokenSymbol) t.push("xstock")
-    return { ...a, tags: t }
+    return { ...a, tags: t, mentionedBy: mentioners }
   })
 }
 
 // ── Unified fetch ──────────────────────────────────────────────────────────
 
 export async function fetchAllAssets() {
-  const [{ stocks, xstocks }, crypto, etfs, commodities, market, aleabitoMentions, aschenbrennerMentions, realsimplearielMentions, stamatoudismMentions, jfsrevMentions, asymtradingMentions, tenetResearchMentions] = await Promise.all([
-    fetchStocks(), fetchCrypto(), fetchETFs(), fetchCommodities(), fetchMarketRegime(), fetchAleabitoMentions(), fetchAshenbrennerMentions(), fetchRealSimpleArielMentions(), fetchStamatoudismMentions(), fetchJfsrevMentions(), fetchAsymTradingMentions(), fetchTenetResearchMentions(),
+  const [{ stocks, xstocks }, crypto, etfs, commodities, market, mentionsMap, intel] = await Promise.all([
+    fetchStocks(),
+    fetchCrypto(),
+    fetchETFs(),
+    fetchCommodities(),
+    fetchMarketRegime(),
+    fetchTrackedMentionsMap(),
+    fetchTrackedFeed(40).catch((err): IntelTweet[] => {
+      console.error("Intel feed fetch:", err instanceof Error ? err.message : String(err))
+      return []
+    }),
   ])
 
-  const mentions: Record<string, Set<string>> = {
-    aleabitoreddit: aleabitoMentions,
-    aschenbrenner: aschenbrennerMentions,
-    realsimpleariel: realsimplearielMentions,
-    stamatoudism: stamatoudismMentions,
-    jfsrev: jfsrevMentions,
-    asymtrading: asymtradingMentions,
-    tenet_research: tenetResearchMentions,
+  // ── X-surfaced auto-add ────────────────────────────────────────────────
+  // Strict gate: cashtag form only, from tracked accounts, Yahoo-resolved,
+  // capped. Resolved names land in stocks with xSurfaced=true and inherit a
+  // 24h mention cache from the mentions map.
+  const knownSymbols = new Set(
+    [...stocks, ...crypto, ...etfs, ...commodities].map((a) => a.symbol.toUpperCase())
+  )
+  const xCandidates: string[] = []
+  for (const [sym] of mentionsMap.bySymbol) {
+    const s = sym.toUpperCase()
+    if (knownSymbols.has(s)) continue
+    if (!/^[A-Z]{1,5}(\.[A-Z])?$/.test(s)) continue
+    xCandidates.push(s)
+    knownSymbols.add(s)
+    if (xCandidates.length >= 40) break
+  }
+  let xSurfacedAssets: ScreenerAsset[] = []
+  if (xCandidates.length > 0) {
+    xSurfacedAssets = (await fetchYahooAssets(
+      xCandidates.map((s) => ({ symbol: s, category: "stocks" as AssetCategory }))
+    )).map((a) => ({ ...a, xSurfaced: true }))
+      // Only auto-add tickers with a known sector classification.
+      // Cashtags that resolve to unclassified Yahoo symbols (not in
+      // SECTOR_MAP) are excluded to keep the universe clean.
+      .filter((a) => a.subsector !== "Unclassified")
   }
 
-  const signaled = computeSignals([...stocks, ...crypto, ...etfs, ...commodities])
+  const baseStocks = [...stocks, ...xSurfacedAssets]
+  const allForSignals = [...baseStocks, ...crypto, ...etfs, ...commodities]
+  const signaled = computeSignals(allForSignals, market)
   const byKey = new Map(signaled.map((a) => [`${a.category}:${a.symbol}`, a]))
   const pick = (items: ScreenerAsset[]) => items.map((a) => byKey.get(`${a.category}:${a.symbol}`) || a)
   const all = signaled
 
+  // Per-category ADR 25th percentile — the threshold for the quiet-coil signal.
+  const adrP25ByCategory: Record<string, number> = {}
+  for (const cat of ["stocks", "crypto", "etfs", "commodities"] as AssetCategory[]) {
+    const adrs = all
+      .filter((a) => a.category === cat)
+      .map((a) => a.adrPercent)
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => a - b)
+    adrP25ByCategory[cat] = adrs.length ? adrs[Math.floor(adrs.length * 0.25)] : 0
+  }
+
   return {
-    stocks: computeTags(pick(stocks), market, all, mentions),
-    xstocks: computeTags(pick(xstocks), market, all, mentions),
-    crypto: computeTags(pick(crypto), market, all, mentions),
-    etfs: computeTags(pick(etfs), market, all, mentions),
-    commodities: computeTags(pick(commodities), market, all, mentions),
+    stocks: computeTags(pick(baseStocks), market, all, mentionsMap.bySymbol, adrP25ByCategory),
+    xstocks: computeTags(pick(xstocks), market, all, mentionsMap.bySymbol, adrP25ByCategory),
+    crypto: computeTags(pick(crypto), market, all, mentionsMap.bySymbol, adrP25ByCategory),
+    etfs: computeTags(pick(etfs), market, all, mentionsMap.bySymbol, adrP25ByCategory),
+    commodities: computeTags(pick(commodities), market, all, mentionsMap.bySymbol, adrP25ByCategory),
     market,
+    intel,
   }
 }

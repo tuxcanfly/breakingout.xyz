@@ -34,6 +34,7 @@ type SortKey =
   | "setupScore"
   | "riskScore"
   | "coilScore"
+  | "conviction"
 
 type SortDir = "asc" | "desc"
 
@@ -130,7 +131,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
 }
 
 export function AssetTable({ assets, getTightness, dense = false, highlight = "", newSymbols, onRowClick }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>("pct1M")
+  const [sortKey, setSortKey] = useState<SortKey>("conviction")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
   const sorted = useMemo(() => {
@@ -212,6 +213,16 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 sortDir={sortDir}
                 onSort={handleSort}
                 className={thV}
+              />
+              <SortHeader
+                label="Conv"
+                sortId="conviction"
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={handleSort}
+                className={thV}
+                goodDirection="up"
+                title="Conviction — the actionable composite. Blends COIL, relative strength, and setup, gated by SPY regime and risk. Surfaces in the Top Conviction strip. Higher is better."
               />
               <SortHeader
                 label="COIL"
@@ -421,6 +432,9 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                   </div>
                 </td>
                 <td className={`px-2 ${cellV}`}>
+                  <ConvictionPill asset={asset} />
+                </td>
+                <td className={`px-2 ${cellV}`}>
                   <CoilPill asset={asset} />
                 </td>
                 <td className={`px-2 ${cellV}`}>
@@ -545,6 +559,39 @@ function ScorePill({ value, kind }: { value: number; kind: "rank" | "setup" | "r
   )
 }
 
+function ConvictionPill({ asset }: { asset: ScreenerAsset }) {
+  const value = asset.conviction
+  if (value === undefined) {
+    return (
+      <span style={{ color: "var(--sol-base1)", fontSize: "10px" }}>—</span>
+    )
+  }
+  const color =
+    value >= 80 ? "var(--sol-green)" :
+    value >= 65 ? "var(--sol-blue)" :
+    value >= 45 ? "var(--sol-yellow)" :
+    "var(--sol-red)"
+  const actionable = value >= 70 && (asset.riskScore ?? 100) <= 55
+  return (
+    <span
+      className="inline-flex items-center justify-center gap-0.5 rounded tabular-nums font-bold"
+      title={`Conviction ${value}/100 — blends COIL, RS, and setup, gated by regime and risk.${actionable ? " Actionable." : ""}`}
+      style={{
+        minWidth: 28,
+        height: 18,
+        padding: "0 3px",
+        color,
+        backgroundColor: actionable ? "rgba(133,153,0,0.10)" : "var(--sol-base2)",
+        border: actionable ? `1px solid rgba(133,153,0,0.45)` : "1px solid rgba(147,161,161,0.25)",
+        fontSize: "10px",
+      }}
+    >
+      {value.toFixed(0)}
+      {actionable && <span style={{ fontSize: "8px" }}>●</span>}
+    </span>
+  )
+}
+
 function CoilPill({ asset }: { asset: ScreenerAsset }) {
   const value = asset.coilScore
   if (value === undefined) {
@@ -613,8 +660,17 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   "bottom-decile": { bg: "rgba(220,50,47,0.12)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
   transition: { bg: "rgba(181,137,0,0.10)", color: "#b58900", border: "rgba(181,137,0,0.25)" },
   avoid: { bg: "rgba(220,50,47,0.12)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
+  // Unusual / hidden signals
+  actionable: { bg: "rgba(133,153,0,0.16)", color: "#859900", border: "rgba(133,153,0,0.40)" },
+  "loaded-spring": { bg: "rgba(203,75,22,0.10)", color: "#cb4b16", border: "rgba(203,75,22,0.30)" },
+  accelerating: { bg: "rgba(38,139,210,0.12)", color: "#268bd2", border: "rgba(38,139,210,0.30)" },
+  "quiet-coil": { bg: "rgba(42,161,152,0.12)", color: "#2aa198", border: "rgba(42,161,152,0.30)" },
+  "regime-aligned": { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
+  "reversal-watch": { bg: "rgba(181,137,0,0.12)", color: "#b58900", border: "rgba(181,137,0,0.30)" },
+  "rsi-overbought": { bg: "rgba(220,50,47,0.10)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
+  "rsi-oversold": { bg: "rgba(42,161,152,0.12)", color: "#2aa198", border: "rgba(42,161,152,0.30)" },
+  "x-surfaced": { bg: "rgba(211,54,130,0.12)", color: "#d33682", border: "rgba(211,54,130,0.30)" },
   aleabitoreddit: { bg: "rgba(211,54,130,0.10)", color: "#d33682", border: "rgba(211,54,130,0.25)" },
-  aschenbrenner: { bg: "rgba(42,161,152,0.10)", color: "#2aa198", border: "rgba(42,161,152,0.25)" },
   realsimpleariel: { bg: "rgba(38,139,210,0.10)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
   stamatoudism: { bg: "rgba(108,113,196,0.10)", color: "#6c71c4", border: "rgba(108,113,196,0.25)" },
   jfsrev: { bg: "rgba(203,75,22,0.10)", color: "#cb4b16", border: "rgba(203,75,22,0.25)" },
@@ -625,7 +681,6 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
 
 const TAG_LINKS: Record<string, string> = {
   aleabitoreddit: "https://x.com/aleabitoreddit",
-  aschenbrenner: "https://x.com/leopoldasch",
   realsimpleariel: "https://x.com/realsimpleariel",
   stamatoudism: "https://x.com/stamatoudism",
   jfsrev: "https://x.com/jfsrev",

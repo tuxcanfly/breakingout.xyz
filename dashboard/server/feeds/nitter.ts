@@ -1,3 +1,5 @@
+import type { IntelTweet } from "../types.js"
+
 export interface NitterTweet {
   author: string
   text: string
@@ -9,6 +11,24 @@ export interface NitterResult {
   count: number
   tweets: NitterTweet[]
 }
+
+export interface TrackedAccount {
+  handle: string
+  tag: string
+  name: string
+  xUrl: string
+}
+
+// High-signal accounts whose mentions feed both the per-asset tags and the
+// Intel tab. Keep this curated — every handle adds a per-refresh Nitter hit.
+export const TRACKED_ACCOUNTS: TrackedAccount[] = [
+  { handle: "aleabitoreddit", tag: "aleabitoreddit", name: "AleabitoReddit", xUrl: "https://x.com/aleabitoreddit" },
+{ handle: "realsimpleariel", tag: "realsimpleariel", name: "RealSimpleAriel", xUrl: "https://x.com/realsimpleariel" },
+  { handle: "stamatoudism", tag: "stamatoudism", name: "Michael Stamatoudis", xUrl: "https://x.com/stamatoudism" },
+  { handle: "jfsrev", tag: "jfsrev", name: "JFSRev", xUrl: "https://x.com/jfsrev" },
+  { handle: "asymtrading", tag: "asymtrading", name: "AsymTrading", xUrl: "https://x.com/asymtrading" },
+  { handle: "tenet_research", tag: "tenet_research", name: "Tenet Research", xUrl: "https://x.com/tenet_research" },
+]
 
 const NITTER_INSTANCES = [
   "http://167.179.82.187:8085",
@@ -38,14 +58,14 @@ function parseRSS(xml: string): NitterTweet[] {
   const itemRegex = /<item>[\s\S]*?<\/item>/g
   const items = xml.match(itemRegex) || []
 
-  for (const item of items.slice(0, 5)) {
+  for (const item of items.slice(0, 8)) {
     const titleMatch = item.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/)
     const linkMatch = item.match(/<link>(.*?)<\/link>/)
     const dateMatch = item.match(/<pubDate>(.*?)<\/pubDate>/)
     const creatorMatch = item.match(/<dc:creator>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/dc:creator>/)
       || item.match(/<author>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/author>/)
 
-    const text = titleMatch ? titleMatch[1].trim().replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">") : ""
+    const text = titleMatch ? titleMatch[1].trim().replace(/&(quot|amp|lt|gt|apos|#39);/g, (m) => ({ "&quot;": '"', "&amp;": "&", "&lt;": "<", "&gt;": ">", "&apos;": "'", "&#39;": "'" }[m] ?? m)) : ""
     if (!text) continue
 
     let link = linkMatch ? linkMatch[1].trim() : ""
@@ -89,19 +109,31 @@ async function fetchFromInstance(instance: string, symbol: string): Promise<Nitt
   }
 }
 
-const mentionCache = new Map<string, { data: Set<string>; timestamp: number }>()
-const MENTION_CACHE_TTL = 30 * 60 * 1000
+// Cashtag extraction. Strict: only $TICKER form (1–5 uppercase letters,
+// optional trailing .B for share classes). This is the gate for x-surfaced
+// auto-add — anything looser risks flooding the universe with noise.
+const CASHTAG_RE = /\$([A-Z]{1,5}(?:\.[A-Z])?)/g
 
-function extractSymbolsFromTweets(tweets: NitterTweet[]): Set<string> {
+export function extractSymbolsFromTweets(tweets: NitterTweet[]): Set<string> {
   const symbols = new Set<string>()
-  const cashtagRegex = /\$([A-Z]{1,5}\.?[A-Z]?)/g
   for (const t of tweets) {
     let m: RegExpExecArray | null
-    while ((m = cashtagRegex.exec(t.text)) !== null) {
+    CASHTAG_RE.lastIndex = 0
+    while ((m = CASHTAG_RE.exec(t.text)) !== null) {
       symbols.add(m[1])
     }
   }
   return symbols
+}
+
+function extractSymbolsFromText(text: string): string[] {
+  const out: string[] = []
+  let m: RegExpExecArray | null
+  CASHTAG_RE.lastIndex = 0
+  while ((m = CASHTAG_RE.exec(text)) !== null) {
+    out.push(m[1])
+  }
+  return out
 }
 
 async function fetchFromUser(instance: string, username: string): Promise<NitterTweet[]> {
@@ -120,53 +152,78 @@ async function fetchFromUser(instance: string, username: string): Promise<Nitter
   }
 }
 
-async function fetchUserMentions(username: string): Promise<Set<string>> {
-  const cacheKey = `${username}:mentions`
-  const cached = mentionCache.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < MENTION_CACHE_TTL) {
-    return cached.data
-  }
-
+// Fetch recent tweets from a single tracked handle, trying instances in order.
+async function fetchAccountTweets(account: TrackedAccount): Promise<NitterTweet[]> {
   for (const instance of NITTER_INSTANCES) {
-    const tweets = await fetchFromUser(instance, username)
-    if (tweets.length > 0) {
-      const symbols = extractSymbolsFromTweets(tweets)
-      mentionCache.set(cacheKey, { data: symbols, timestamp: Date.now() })
-      return symbols
+    const tweets = await fetchFromUser(instance, account.handle)
+    if (tweets.length > 0) return tweets
+  }
+  return []
+}
+
+// Strict-gated mentions map: tag -> Set of cashtags mentioned recently by that
+// account. Used both for per-asset tags and to seed x-surfaced auto-add.
+export async function fetchTrackedMentionsMap(): Promise<{
+  byTag: Record<string, Set<string>>
+  bySymbol: Map<string, string[]>
+}> {
+  const byTag: Record<string, Set<string>> = {}
+  const bySymbol = new Map<string, string[]>()
+
+  const results = await Promise.all(
+    TRACKED_ACCOUNTS.map(async (acc) => {
+      const tweets = await fetchAccountTweets(acc)
+      return { acc, symbols: extractSymbolsFromTweets(tweets) }
+    })
+  )
+
+  for (const { acc, symbols } of results) {
+    byTag[acc.tag] = symbols
+    for (const sym of symbols) {
+      const existing = bySymbol.get(sym)
+      if (existing) {
+        if (!existing.includes(acc.tag)) existing.push(acc.tag)
+      } else {
+        bySymbol.set(sym, [acc.tag])
+      }
     }
   }
 
-  const empty = new Set<string>()
-  mentionCache.set(cacheKey, { data: empty, timestamp: Date.now() })
-  return empty
+  return { byTag, bySymbol }
 }
 
-export async function fetchAleabitoMentions(): Promise<Set<string>> {
-  return fetchUserMentions("aleabitoreddit")
-}
+// Union of recent tweets from all tracked accounts, annotated with the
+// author handle and any cashtags mentioned in the body. Powers the Intel tab.
+export async function fetchTrackedFeed(limit = 40): Promise<IntelTweet[]> {
+  const perAccount = await Promise.all(
+    TRACKED_ACCOUNTS.map(async (acc) => {
+      const tweets = await fetchAccountTweets(acc)
+      return tweets.map<IntelTweet>((t) => ({
+        author: acc.name,
+        authorHandle: acc.handle,
+        authorUrl: acc.xUrl,
+        text: t.text,
+        date: t.date,
+        link: t.link,
+        symbols: extractSymbolsFromText(t.text),
+      }))
+    })
+  )
 
-export async function fetchAshenbrennerMentions(): Promise<Set<string>> {
-  return fetchUserMentions("aschenbrenner")
-}
+  const flat = perAccount.flat()
+  // Dedup by link (same tweet from different instance paths), keep most recent
+  const seen = new Set<string>()
+  const deduped = flat
+    .filter((t) => {
+      const key = t.link || `${t.authorHandle}:${t.text.slice(0, 60)}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, limit)
 
-export async function fetchRealSimpleArielMentions(): Promise<Set<string>> {
-  return fetchUserMentions("realsimpleariel")
-}
-
-export async function fetchStamatoudismMentions(): Promise<Set<string>> {
-  return fetchUserMentions("stamatoudism")
-}
-
-export async function fetchJfsrevMentions(): Promise<Set<string>> {
-  return fetchUserMentions("jfsrev")
-}
-
-export async function fetchAsymTradingMentions(): Promise<Set<string>> {
-  return fetchUserMentions("asymtrading")
-}
-
-export async function fetchTenetResearchMentions(): Promise<Set<string>> {
-  return fetchUserMentions("tenet_research")
+  return deduped
 }
 
 export async function fetchTweetsForSymbol(symbol: string): Promise<NitterResult> {
