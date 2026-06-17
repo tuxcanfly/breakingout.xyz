@@ -2,6 +2,7 @@ export interface TrendingStock {
   symbol: string
   source: "apewisdom" | "yahoo"
   mentions?: number
+  name?: string
 }
 
 const USER_AGENT =
@@ -38,12 +39,17 @@ export async function fetchApeWisdomTrending(limit = 100): Promise<TrendingStock
     throw new Error(`ApeWisdom ${res.status}`)
   }
   const data = (await res.json()) as {
-    results?: Array<{ ticker: string; mentions?: number }>
+    results?: Array<{ ticker: string; mentions?: number; name?: string }>
   }
   const results = data.results ?? []
   return results
     .slice(0, limit)
-    .map((r) => ({ symbol: r.ticker, source: "apewisdom" as const, mentions: r.mentions }))
+    .map((r) => ({
+      symbol: r.ticker,
+      source: "apewisdom" as const,
+      mentions: r.mentions,
+      name: r.name ? htmlDecode(r.name) : undefined,
+    }))
     .filter((r) => VALID_SYMBOL_RE.test(r.symbol))
 }
 
@@ -100,6 +106,7 @@ export async function fetchYahooTrending(): Promise<TrendingStock[]> {
 // ── Unified fetch with logging ─────────────────────────────────────────────
 export async function fetchTrendingStocks(): Promise<{
   symbols: string[]
+  results: TrendingStock[]
   bySource: Record<string, number>
   overlap: number
   errors: string[]
@@ -130,6 +137,7 @@ export async function fetchTrendingStocks(): Promise<{
 
   return {
     symbols: [...results.keys()],
+    results: [...results.values()],
     bySource: {
       apewisdom: ape.length,
       yahoo: yahoo.length,

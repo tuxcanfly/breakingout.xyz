@@ -119,6 +119,7 @@ async function tryFetchYahoo(yahooSymbol: string, seed: YahooAssetSeed): Promise
     underlyingSymbol: seed.underlyingSymbol,
     tokenSymbol: seed.tokenSymbol,
     venue: seed.venue || "Yahoo",
+    chartSymbol: seed.yahooSymbol || seed.symbol,
   }
 }
 

@@ -169,13 +169,33 @@ function classifyByName(normalizedName: string): Classification | null {
   // Consumer
   if (normalizedName.includes("retail") || normalizedName.includes("restaurant") || normalizedName.includes("coffee") || normalizedName.includes("stores") || normalizedName.includes("apparel") || normalizedName.includes("auto") || normalizedName.includes("vehicle") || normalizedName.includes("gaming") || normalizedName.includes("entertainment") || normalizedName.includes("hotel") || normalizedName.includes("travel") || normalizedName.includes("leisure") || normalizedName.includes("casino")) return { sector: "Consumer Discretionary", subsector: "Other Specialty Retail" }
   if (normalizedName.includes("consumer") || normalizedName.includes("food") || normalizedName.includes("beverage") || normalizedName.includes("household") || normalizedName.includes("personal care")) return { sector: "Consumer Staples", subsector: "Household Products" }
-  // Industrials
-  if (normalizedName.includes("aerospace") || normalizedName.includes("defense") || normalizedName.includes("space") || normalizedName.includes("aviation") || normalizedName.includes("satellite")) return { sector: "Industrials", subsector: "Aerospace & Defense" }
-  if (normalizedName.includes("industrial") || normalizedName.includes("manufacturing") || normalizedName.includes("machinery") || normalizedName.includes("equipment") || normalizedName.includes("engineering") || normalizedName.includes("construction") || normalizedName.includes("transport") || normalizedName.includes("logistics") || normalizedName.includes("rail") || normalizedName.includes("shipping") || normalizedName.includes("airline")) return { sector: "Industrials", subsector: "Industrial Machinery & Supplies & Components" }
-  // ETFs / Funds
-  if (normalizedName.includes("etf") || normalizedName.includes("index")) return { sector: "Broad Market", subsector: "Equity ETF" }
-  if (normalizedName.includes("fund") || normalizedName.includes("trust")) return { sector: "Broad Market", subsector: "Fund" }
-  if (normalizedName.includes("treasury") || normalizedName.includes("bond") || normalizedName.includes("income")) return { sector: "Fixed Income", subsector: "Yield ETF" }
+  // Crypto / blockchain-related names that don't include "bitcoin" explicitly
+  if (
+    normalizedName.includes("coin") ||
+    normalizedName.includes("token") ||
+    normalizedName.includes("chain") ||
+    normalizedName.includes("defi") ||
+    normalizedName.includes("stake") ||
+    normalizedName.includes("swap") ||
+    normalizedName.includes("crypto")
+  ) return { sector: "Digital Assets", subsector: "Crypto-Linked Equity" }
+  // Catch-all tech / software / digital names
+  if (
+    normalizedName.includes("app") ||
+    normalizedName.includes("platform") ||
+    normalizedName.includes("software") ||
+    normalizedName.includes("technology") ||
+    normalizedName.includes("tech") ||
+    normalizedName.includes("digital") ||
+    normalizedName.includes("ai") ||
+    normalizedName.includes("artificial intelligence") ||
+    normalizedName.includes("data") ||
+    normalizedName.includes("cloud") ||
+    normalizedName.includes("cyber") ||
+    normalizedName.includes("internet") ||
+    normalizedName.includes("online") ||
+    normalizedName.includes("saas")
+  ) return { sector: "Information Technology", subsector: "Application Software" }
   return null
 }
 

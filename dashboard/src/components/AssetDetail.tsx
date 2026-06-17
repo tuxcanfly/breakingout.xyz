@@ -48,8 +48,9 @@ export function AssetDetail({ asset, onClose }: Props) {
 
   if (!asset) return null
 
-  const finvizUrl = `https://finviz.com/chart.ashx?t=${asset.symbol.toUpperCase()}&ty=c&ta=1&p=d&s=l`
-  const yahooUrl = `https://ca.finance.yahoo.com/quote/${asset.symbol.toUpperCase()}/`
+  const chartSymbol = asset.chartSymbol || asset.symbol
+  const finvizUrl = `https://finviz.com/chart.ashx?t=${chartSymbol.toUpperCase()}&ty=c&ta=1&p=d&s=l`
+  const yahooUrl = `https://ca.finance.yahoo.com/quote/${chartSymbol.toUpperCase()}/`
 
   const maIcons = [asset.ma10, asset.ma20, asset.ma50, asset.ma200].map((ma, i) => ({
     label: ["10", "20", "50", "200"][i],

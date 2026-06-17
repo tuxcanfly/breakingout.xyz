@@ -22,9 +22,9 @@ export interface ScreenerAsset {
   pct1Y: number
   price?: number
   change24h?: number
-  underlyingSymbol?: string
   tokenSymbol?: string
   venue?: string
+  chartSymbol?: string
   momentumRank?: number
   categoryRank?: number
   sectorRank?: number

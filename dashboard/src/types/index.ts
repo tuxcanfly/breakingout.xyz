@@ -25,6 +25,7 @@ export interface ScreenerAsset {
   underlyingSymbol?: string
   tokenSymbol?: string
   venue?: string
+  chartSymbol?: string
   momentumRank?: number
   categoryRank?: number
   sectorRank?: number

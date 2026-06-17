@@ -24,8 +24,9 @@ export const ChartHover = memo(function ChartHover({ symbol, name, children }: C
   const triggerRef = useRef<HTMLSpanElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const finvizUrl = `https://finviz.com/chart.ashx?t=${symbol.toUpperCase()}&ty=c&ta=1&p=d&s=l`
-  const yahooUrl = yahooFinanceUrl(symbol)
+  const chartSymbol = symbol.endsWith("-USD") ? symbol : `${symbol}-USD`
+  const finvizUrl = `https://finviz.com/chart.ashx?t=${chartSymbol.toUpperCase()}&ty=c&ta=1&p=d&s=l`
+  const yahooUrl = yahooFinanceUrl(chartSymbol)
 
   const computePos = useCallback(() => {
     const el = triggerRef.current

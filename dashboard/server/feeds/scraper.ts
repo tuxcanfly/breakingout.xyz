@@ -43,6 +43,7 @@ interface AssetMeta {
   underlyingSymbol?: string
   tokenSymbol?: string
   venue?: string
+  chartSymbol?: string
 }
 
 async function scanTV(endpoint: string, tickers: string[], batchSize = 80): Promise<{ symbol: string; v: number[] }[]> {
@@ -137,6 +138,7 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetM
     underlyingSymbol: meta.underlyingSymbol,
     tokenSymbol: meta.tokenSymbol,
     venue: meta.venue,
+    chartSymbol: meta.chartSymbol,
   }
 }
 
@@ -303,7 +305,10 @@ async function fetchCrypto(): Promise<ScreenerAsset[]> {
       const rows = await scanTV("https://scanner.tradingview.com/crypto/scan", tvTickers)
       assets = rows.filter((r) => r.v[1] > 0).map((r) => {
         const raw = r.symbol.replace("USDT", "").replace("PERP", "")
-        return makeAsset(raw, r.v, "crypto", { name: raw })
+        return makeAsset(raw, r.v, "crypto", {
+          name: raw,
+          chartSymbol: `${raw}-USD`,
+        })
       })
     } catch (err) {
       console.error("Crypto TradingView fetch:", err instanceof Error ? err.message : String(err))
@@ -570,6 +575,8 @@ export async function fetchAllAssets() {
     }),
   ])
 
+  const trendingBySymbol = new Map(trending.symbols.map((s) => [s.toUpperCase(), trending.results.find((r) => r.symbol.toUpperCase() === s.toUpperCase())]))
+
   console.log(
     `Trending stocks: ${trending.symbols.length} unique (ApeWisdom ${trending.bySource.apewisdom ?? 0}, Yahoo ${trending.bySource.yahoo ?? 0}, overlap ${trending.overlap})${trending.errors.length ? " errors: " + trending.errors.join("; ") : ""}`
   )
@@ -587,6 +594,7 @@ export async function fetchAllAssets() {
           symbol: s,
           category: "stocks" as AssetCategory,
           fallbackSymbols: EU_SUFFIXES.map((suf) => `${s}${suf}`),
+          name: trendingBySymbol.get(s.toUpperCase())?.name,
         }))
       )
     ).map((a) => ({ ...a, tags: ["trending"] }))
