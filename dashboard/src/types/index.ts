@@ -36,9 +36,18 @@ export interface ScreenerAsset {
   distToHighPct?: number
   trendState?: TrendState
   rsi?: number
-  conviction?: number
   mentionedBy?: string[]
   tags?: string[]
+  analystRating?: {
+    consensus: "strong buy" | "buy" | "hold" | "sell" | "strong sell"
+    score: number
+    strongBuy: number
+    buy: number
+    hold: number
+    sell: number
+    strongSell: number
+    total: number
+  }
 }
 
 export interface MarketRegime {

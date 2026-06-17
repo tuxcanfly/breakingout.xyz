@@ -407,6 +407,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                         New
                       </Badge>
                     )}
+                    <AnalystRatingPill rating={asset.analystRating} />
                   </div>
                 </td>
                 <td className={`px-2 ${cellV}`}>
@@ -637,6 +638,34 @@ function CoilPill({ asset }: { asset: ScreenerAsset }) {
       {value.toFixed(0)}
       {full && <span style={{ fontSize: "8px" }}>●</span>}
     </span>
+  )
+}
+function AnalystRatingPill({ rating }: { rating?: ScreenerAsset["analystRating"] }) {
+  if (!rating) return null
+  const color =
+    rating.consensus === "strong buy"
+      ? "var(--sol-green)"
+      : rating.consensus === "buy"
+      ? "var(--sol-cyan)"
+      : rating.consensus === "hold"
+      ? "var(--sol-yellow)"
+      : rating.consensus === "sell"
+      ? "var(--sol-orange)"
+      : "var(--sol-red)"
+  return (
+    <Badge
+      variant="secondary"
+      className="px-1 py-0"
+      style={{
+        backgroundColor: color.replace(")", ", 0.12)").replace("rgb", "rgba"),
+        color,
+        fontSize: "9px",
+        height: "14px",
+      }}
+      title={`Analyst consensus: ${rating.consensus} (${rating.strongBuy} strong buy, ${rating.buy} buy, ${rating.hold} hold, ${rating.sell} sell, ${rating.strongSell} strong sell)`}
+    >
+      {rating.consensus.toUpperCase()}
+    </Badge>
   )
 }
 

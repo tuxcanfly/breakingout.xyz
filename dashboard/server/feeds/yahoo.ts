@@ -12,6 +12,7 @@ export interface YahooAssetSeed {
   underlyingSymbol?: string
   tokenSymbol?: string
   venue?: string
+  minBars?: number
 }
 
 interface YahooChartResult {
@@ -74,7 +75,7 @@ async function tryFetchYahoo(yahooSymbol: string, seed: YahooAssetSeed): Promise
       typeof b.close === "number" && typeof b.high === "number" && typeof b.low === "number"
     )
 
-  if (bars.length < 30) return null
+  if (bars.length < (seed.minBars ?? 30)) return null
 
   const close = bars.at(-1)?.close || result.meta?.regularMarketPrice || 0
   if (close <= 0) return null

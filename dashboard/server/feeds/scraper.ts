@@ -9,6 +9,7 @@ import {
   isReversalWatch,
 } from "./indicators.js"
 import { fetchTrendingStocks } from "./trending.js"
+import { fetchAnalystRatings, mergeAnalystRatings } from "./finnhub.js"
 import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
 import { XSTOCK_PRODUCTS } from "./xstocks.js"
 import {
@@ -90,7 +91,9 @@ async function scanTVChunkWithRetry(endpoint: string, tickers: string[], retries
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  const { promise, resolve } = Promise.withResolvers<void>()
+  setTimeout(resolve, ms)
+  return promise
 }
 
 function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetMeta = {}): ScreenerAsset {
@@ -590,12 +593,13 @@ export async function fetchAllAssets() {
     const EU_SUFFIXES = [".L", ".DE", ".PA", ".ST", ".AS", ".MI", ".BR", ".SW"]
     trendingAssets = (
       await fetchYahooAssets(
-        trendingCandidates.map((s) => ({
-          symbol: s,
-          category: "stocks" as AssetCategory,
-          fallbackSymbols: EU_SUFFIXES.map((suf) => `${s}${suf}`),
-          name: trendingBySymbol.get(s.toUpperCase())?.name,
-        }))
+                trendingCandidates.map((s) => ({
+                  symbol: s,
+                  category: "stocks" as AssetCategory,
+                  fallbackSymbols: EU_SUFFIXES.map((suf) => `${s}${suf}`),
+                  name: trendingBySymbol.get(s.toUpperCase())?.name,
+                  minBars: 1,
+                }))
       )
     ).map((a) => ({ ...a, tags: ["trending"] }))
     console.log(`Resolved trending stocks: ${trendingAssets.length}/${trendingCandidates.length}`)
@@ -619,8 +623,15 @@ export async function fetchAllAssets() {
     adrP25ByCategory[cat] = adrs.length ? adrs[Math.floor(adrs.length * 0.25)] : 0
   }
 
+  const ratings = await fetchAnalystRatings(pick(baseStocks)).catch((err) => {
+    console.error("Analyst ratings fetch:", err instanceof Error ? err.message : String(err))
+    return new Map<string, { consensus: "strong buy" | "buy" | "hold" | "sell" | "strong sell"; score: number; strongBuy: number; buy: number; hold: number; sell: number; strongSell: number; total: number }>()
+  })
+  const ratedStocks = mergeAnalystRatings(pick(baseStocks), ratings)
+  console.log(`Merged analyst ratings: ${ratedStocks.filter((a) => a.analystRating).length}/${ratedStocks.length}`)
+
   return {
-    stocks: computeTags(pick(baseStocks), market, all, mentionsMap.bySymbol, adrP25ByCategory),
+    stocks: computeTags(ratedStocks, market, all, mentionsMap.bySymbol, adrP25ByCategory),
     crypto: computeTags(pick(crypto), market, all, mentionsMap.bySymbol, adrP25ByCategory),
     etfs: computeTags(pick(etfs), market, all, mentionsMap.bySymbol, adrP25ByCategory),
     commodities: computeTags(pick(commodities), market, all, mentionsMap.bySymbol, adrP25ByCategory),

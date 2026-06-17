@@ -895,4 +895,5 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "TE": { sector: "Information Technology", subsector: "Electronic Components" },
   "PDYN": { sector: "Health Care", subsector: "Biotechnology" },
   "LNAI": { sector: "Information Technology", subsector: "AI Platform" },
+  "SPCX": { sector: "Industrials", subsector: "Aerospace & Defense" },
 }

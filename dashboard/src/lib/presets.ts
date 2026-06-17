@@ -57,6 +57,18 @@ export const PRESETS: Preset[] = [
     test: (a) => a.tags?.includes("rsi-oversold") ?? false,
   },
   {
+    id: "analyst-strong-buy",
+    label: "Strong Buy",
+    title: "Stocks with Finnhub strong-buy analyst consensus",
+    test: (a) => a.analystRating?.consensus === "strong buy",
+  },
+  {
+    id: "analyst-buy",
+    label: "Analyst Buy+",
+    title: "Stocks with Finnhub buy or strong-buy analyst consensus",
+    test: (a) => a.analystRating?.consensus === "buy" || a.analystRating?.consensus === "strong buy",
+  },
+  {
     id: "trending",
     label: "Trending",
     title: "Stocks trending on Yahoo Finance and ApeWisdom",

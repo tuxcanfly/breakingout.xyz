@@ -105,6 +105,37 @@ export function AssetDetail({ asset, onClose }: Props) {
                   {asset.tokenSymbol}
                 </span>
               )}
+              {asset.analystRating && (
+                <span
+                  className="px-1.5 py-0.5 rounded font-medium"
+                  style={{
+                    backgroundColor:
+                      asset.analystRating.consensus === "strong buy"
+                        ? "rgba(133,153,0,0.12)"
+                        : asset.analystRating.consensus === "buy"
+                        ? "rgba(42,161,152,0.12)"
+                        : asset.analystRating.consensus === "hold"
+                        ? "rgba(181,137,0,0.12)"
+                        : asset.analystRating.consensus === "sell"
+                        ? "rgba(203,75,22,0.12)"
+                        : "rgba(220,50,47,0.12)",
+                    color:
+                      asset.analystRating.consensus === "strong buy"
+                        ? "var(--sol-green)"
+                        : asset.analystRating.consensus === "buy"
+                        ? "var(--sol-cyan)"
+                        : asset.analystRating.consensus === "hold"
+                        ? "var(--sol-yellow)"
+                        : asset.analystRating.consensus === "sell"
+                        ? "var(--sol-orange)"
+                        : "var(--sol-red)",
+                    fontSize: "10px",
+                  }}
+                  title={`Analyst consensus: ${asset.analystRating.consensus} (${asset.analystRating.strongBuy} strong buy, ${asset.analystRating.buy} buy, ${asset.analystRating.hold} hold, ${asset.analystRating.sell} sell, ${asset.analystRating.strongSell} strong sell)`}
+                >
+                  {asset.analystRating.consensus.toUpperCase()}
+                </span>
+              )}
             </div>
             <div style={{ color: "var(--sol-base01)", fontSize: "12px", marginTop: "2px" }}>
               {asset.name} · {asset.sector}
