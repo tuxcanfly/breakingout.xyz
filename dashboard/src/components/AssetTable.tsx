@@ -676,7 +676,7 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   jfsrev: { bg: "rgba(203,75,22,0.10)", color: "#cb4b16", border: "rgba(203,75,22,0.25)" },
   asymtrading: { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
   tenet_research: { bg: "rgba(38,139,210,0.10)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
-  xstock: { bg: "rgba(108,113,196,0.12)", color: "#6c71c4", border: "rgba(108,113,196,0.25)" },
+  chairmansledger: { bg: "rgba(181,137,0,0.10)", color: "#b58900", border: "rgba(181,137,0,0.25)" },
 }
 
 const TAG_LINKS: Record<string, string> = {
@@ -684,8 +684,8 @@ const TAG_LINKS: Record<string, string> = {
   realsimpleariel: "https://x.com/realsimpleariel",
   stamatoudism: "https://x.com/stamatoudism",
   jfsrev: "https://x.com/jfsrev",
-  asymtrading: "https://x.com/asymtrading",
   tenet_research: "https://x.com/tenet_research",
+  chairmansledger: "https://x.com/ChairmansLedger",
 }
 
 function TagList({ tags }: { tags?: string[] }) {

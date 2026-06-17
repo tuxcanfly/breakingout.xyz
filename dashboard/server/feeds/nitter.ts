@@ -23,11 +23,12 @@ export interface TrackedAccount {
 // Intel tab. Keep this curated — every handle adds a per-refresh Nitter hit.
 export const TRACKED_ACCOUNTS: TrackedAccount[] = [
   { handle: "aleabitoreddit", tag: "aleabitoreddit", name: "AleabitoReddit", xUrl: "https://x.com/aleabitoreddit" },
-{ handle: "realsimpleariel", tag: "realsimpleariel", name: "RealSimpleAriel", xUrl: "https://x.com/realsimpleariel" },
+  { handle: "realsimpleariel", tag: "realsimpleariel", name: "RealSimpleAriel", xUrl: "https://x.com/realsimpleariel" },
   { handle: "stamatoudism", tag: "stamatoudism", name: "Michael Stamatoudis", xUrl: "https://x.com/stamatoudism" },
   { handle: "jfsrev", tag: "jfsrev", name: "JFSRev", xUrl: "https://x.com/jfsrev" },
   { handle: "asymtrading", tag: "asymtrading", name: "AsymTrading", xUrl: "https://x.com/asymtrading" },
   { handle: "tenet_research", tag: "tenet_research", name: "Tenet Research", xUrl: "https://x.com/tenet_research" },
+  { handle: "ChairmansLedger", tag: "chairmansledger", name: "ChairmansLedger", xUrl: "https://x.com/ChairmansLedger" },
 ]
 
 const NITTER_INSTANCES = [
