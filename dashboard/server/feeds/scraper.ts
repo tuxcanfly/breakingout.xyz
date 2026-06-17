@@ -8,6 +8,7 @@ import {
   isRegimeAligned,
   isReversalWatch,
 } from "./indicators.js"
+import { fetchTrendingStocks } from "./trending.js"
 import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
 import { XSTOCK_PRODUCTS } from "./xstocks.js"
 import {
@@ -148,15 +149,21 @@ function yahooSeeds(symbols: string[], category: AssetCategory): YahooAssetSeed[
   return [...new Set(symbols)].map((symbol) => ({ symbol, category }))
 }
 
-// ── Stock fetcher (S&P 500 + extras + xStock metadata) ─────────────────────
+// ── Stock fetcher (S&P 500 + extras + xStock metadata + trending) ──────────
 
-async function fetchStocks(): Promise<{ stocks: ScreenerAsset[]; xstocks: ScreenerAsset[] }> {
-  const cached = getCached<{ stocks: ScreenerAsset[]; xstocks: ScreenerAsset[] }>("stocks")
+async function fetchStocks(): Promise<ScreenerAsset[]> {
+  const cached = getCached<ScreenerAsset[]>("stocks")
   if (cached) return cached
 
   try {
     // Build unique ticker list: S&P 500 + extras + xStock underlyings
-    const allStockSymbols = [...new Set([...SP500_STOCKS, ...EXTRA_STOCKS, ...XSTOCK_PRODUCTS.map((p) => p.underlyingSymbol)])]
+    const allStockSymbols = [
+      ...new Set([
+        ...SP500_STOCKS,
+        ...EXTRA_STOCKS,
+        ...XSTOCK_PRODUCTS.map((p) => p.underlyingSymbol),
+      ]),
+    ]
 
     let assets: ScreenerAsset[] = []
     try {
@@ -184,11 +191,10 @@ async function fetchStocks(): Promise<{ stocks: ScreenerAsset[]; xstocks: Screen
       assets = mergeAssets(assets, euAssets)
     }
 
-    // Merge xStock metadata into underlying stocks
+    // Merge xStock metadata into underlying stocks. xStocks now live under the
+    // normal "stocks" category with an xstock tag instead of a separate bucket.
     const xstockMap = new Map(XSTOCK_PRODUCTS.map((p) => [p.underlyingSymbol, p]))
     const mergedStocks: ScreenerAsset[] = []
-    const standaloneXStocks: ScreenerAsset[] = []
-
     for (const asset of assets) {
       const xProduct = xstockMap.get(asset.symbol)
       if (xProduct) {
@@ -206,27 +212,29 @@ async function fetchStocks(): Promise<{ stocks: ScreenerAsset[]; xstocks: Screen
     const presentUnderlyings = new Set(mergedStocks.map((a) => a.symbol))
     for (const p of XSTOCK_PRODUCTS) {
       if (!presentUnderlyings.has(p.underlyingSymbol)) {
-        const yahoo = await fetchYahooAssets([{
-          symbol: p.underlyingSymbol,
-          displaySymbol: p.tokenSymbol,
-          tokenSymbol: p.tokenSymbol,
-          underlyingSymbol: p.underlyingSymbol,
-          name: p.name,
-          category: "stocks",
-          venue: "xStocks",
-        }])
+        const yahoo = await fetchYahooAssets([
+          {
+            symbol: p.underlyingSymbol,
+            displaySymbol: p.tokenSymbol,
+            tokenSymbol: p.tokenSymbol,
+            underlyingSymbol: p.underlyingSymbol,
+            name: p.name,
+            category: "stocks",
+            venue: "xStocks",
+          },
+        ])
         if (yahoo.length > 0) {
           mergedStocks.push(yahoo[0])
         }
       }
     }
 
-    const result = { stocks: mergedStocks, xstocks: standaloneXStocks }
+    const result = mergedStocks
     setCache("stocks", result)
     return result
   } catch (err) {
     console.error("Stocks fetch:", err instanceof Error ? err.message : String(err))
-    return getCached<{ stocks: ScreenerAsset[]; xstocks: ScreenerAsset[] }>("stocks") || { stocks: [], xstocks: [] }
+    return getCached<ScreenerAsset[]>("stocks") || []
   }
 }
 
@@ -512,56 +520,27 @@ function computeTags(
   market: MarketRegime,
   allAssets: ScreenerAsset[],
   mentionsBySymbol: Map<string, string[]>,
-  adrP25ByCategory: Record<string, number>,
+  adrP25ByCategory: Record<string, number>
 ): ScreenerAsset[] {
-  const pcts = allAssets.map((a) => a.pct1M).filter((p) => !isNaN(p))
-  const top5 = pcts.length ? pcts.sort((a, b) => b - a)[Math.floor(pcts.length * 0.05)] || 20 : 20
-  return assets.map((a) => {
-    // ETFs don't get breakout/trading tags.
-    if (a.category === "etfs") return a
-    const t: string[] = []
-    if (market.naaim >= 70 && market.naaim <= 90) t.push("naaim")
-    else if (market.naaim > 90) t.push("naaim-extreme")
-    else if (market.naaim < 50) t.push("naaim-caution")
-    const allUp = a.ma10 === "up" && a.ma20 === "up" && a.ma50 === "up" && a.ma200 === "up"
-    const allDn = a.ma10 === "down" && a.ma20 === "down" && a.ma50 === "down" && a.ma200 === "down"
-    if (allUp) t.push("all-ma-up")
-    if (allDn) t.push("all-ma-down")
-    if (a.pct1M >= top5) t.push("momentum-leader")
-    if (a.pct1M > 20) t.push("strong-momentum")
-    if (a.pct1M < -20) t.push("weak-momentum")
-    if (a.adrPercent > 5) t.push("high-volatility")
-    if (a.adrPercent < 2) t.push("low-volatility")
-    if (a.tightness) t.push("tight-base")
-    if (a.pct1M > 10 && a.ma10 === "up" && a.ma20 === "up") t.push("breakout")
-    if (a.pct1M > 0 && a.pct3M > 0 && a.pct6M > 0) t.push("stage2")
-    if ((a.momentumRank || 0) >= 90) t.push("rs-90")
-    if ((a.momentumRank || 0) <= 10) t.push("bottom-decile")
-    if ((a.setupScore || 0) >= 80 && (a.riskScore || 100) <= 45) t.push("clean-setup")
-    // Full COIL stack: at/near the 50d-high trigger + tight base + momentum
-    // leader. Stacked, these tripled forward returns in the backtest.
-    if (
-      a.distToHighPct !== undefined && a.distToHighPct >= -1 &&
-      a.coilTightness !== undefined && a.coilTightness < 4 &&
-      (a.momentumRank || 0) >= 89
-    ) t.push("coil")
-    if (a.trendState === "transition") t.push("transition")
-    if (a.trendState === "downtrend") t.push("avoid")
 
-    // ── Unusual / hidden signals ─────────────────────────────────────────
-    if (a.rsi !== undefined) {
-      if (a.rsi >= 70) t.push("rsi-overbought")
-      else if (a.rsi <= 30) t.push("rsi-oversold")
-    }
+  return assets.map((a) => {
+    const t: string[] = []
+    if (a.tags?.includes("coil")) t.push("coil")
+    if (a.tags?.includes("trending")) t.push("trending")
+    if (a.momentumRank !== undefined && a.momentumRank <= 5) t.push("momentum-leader")
+    if (a.setupScore !== undefined && a.setupScore >= 70 && a.riskScore !== undefined && a.riskScore <= 55) t.push("actionable")
+    if (a.ma10 === "up" && a.ma20 === "up" && a.ma50 === "up" && a.ma200 === "up") t.push("all-ma-up")
+    if (a.pct1M > 10 && a.ma10 === "up" && a.ma20 === "up" && a.ma50 === "up") t.push("breakout")
+    if (a.pct1M > 0 && a.pct3M > 0 && a.pct6M > 0) t.push("stage2")
+    if (a.coilTightness !== undefined && a.coilTightness < 4) t.push("tight-base")
+    if (a.rsi !== undefined && a.rsi <= 30) t.push("rsi-oversold")
+    if (a.rsi !== undefined && a.rsi >= 70) t.push("rsi-overbought")
+    if (market.naaim >= 70 && market.naaim <= 90 && a.ma50 === "up") t.push("naaim")
     if (isLoadedSpring(a)) t.push("loaded-spring")
     if (isAccelerating(a)) t.push("accelerating")
-    if (isQuietCoil(a, adrP25ByCategory[a.category] ?? 0)) t.push("quiet-coil")
+    if (a.distToHighPct !== undefined && isQuietCoil(a, adrP25ByCategory[a.category] ?? 0)) t.push("quiet-coil")
     if (isRegimeAligned(a, market)) t.push("regime-aligned")
     if (isReversalWatch(a)) t.push("reversal-watch")
-    if ((a.conviction || 0) >= 70 && (a.riskScore || 100) <= 55) t.push("actionable")
-    if (a.xSurfaced) t.push("x-surfaced")
-
-    // Mention tags based on tracked X accounts
     const mentioners = mentionsBySymbol.get(a.symbol)
     if (mentioners && mentioners.length > 0) {
       for (const tag of mentioners) t.push(tag)
@@ -574,7 +553,7 @@ function computeTags(
 // ── Unified fetch ──────────────────────────────────────────────────────────
 
 export async function fetchAllAssets() {
-  const [{ stocks, xstocks }, crypto, etfs, commodities, market, mentionsMap, intel] = await Promise.all([
+  const [stocks, crypto, etfs, commodities, market, mentionsMap, intel, trending] = await Promise.all([
     fetchStocks(),
     fetchCrypto(),
     fetchETFs(),
@@ -585,40 +564,36 @@ export async function fetchAllAssets() {
       console.error("Intel feed fetch:", err instanceof Error ? err.message : String(err))
       return []
     }),
+    fetchTrendingStocks().catch((err) => {
+      console.error("Trending stocks fetch:", err instanceof Error ? err.message : String(err))
+      return { symbols: [], bySource: {}, overlap: 0, errors: [String(err)] }
+    }),
   ])
 
-  // ── X-surfaced auto-add ────────────────────────────────────────────────
-  // Strict gate: cashtag form only, from tracked accounts, Yahoo-resolved,
-  // capped. Resolved names land in stocks with xSurfaced=true and inherit a
-  // 24h mention cache from the mentions map.
+  console.log(
+    `Trending stocks: ${trending.symbols.length} unique (ApeWisdom ${trending.bySource.apewisdom ?? 0}, Yahoo ${trending.bySource.yahoo ?? 0}, overlap ${trending.overlap})${trending.errors.length ? " errors: " + trending.errors.join("; ") : ""}`
+  )
+
   const knownSymbols = new Set(
     [...stocks, ...crypto, ...etfs, ...commodities].map((a) => a.symbol.toUpperCase())
   )
-  const xCandidates: string[] = []
-  for (const [sym] of mentionsMap.bySymbol) {
-    const s = sym.toUpperCase()
-    if (knownSymbols.has(s)) continue
-    if (!/^[A-Z]{1,5}(\.[A-Z])?$/.test(s)) continue
-    xCandidates.push(s)
-    knownSymbols.add(s)
-    if (xCandidates.length >= 40) break
-  }
-  let xSurfacedAssets: ScreenerAsset[] = []
-  if (xCandidates.length > 0) {
-    // European exchange suffixes to try when bare symbol doesn't resolve.
-    // Order: London (.L), Germany (.DE), Paris (.PA), Stockholm (.ST),
-    // Amsterdam (.AS), Milan (.MI), Brussels (.BR), Switzerland (.SW).
+  const trendingCandidates = trending.symbols.filter((s) => !knownSymbols.has(s.toUpperCase()))
+  let trendingAssets: ScreenerAsset[] = []
+  if (trendingCandidates.length > 0) {
     const EU_SUFFIXES = [".L", ".DE", ".PA", ".ST", ".AS", ".MI", ".BR", ".SW"]
-    xSurfacedAssets = (await fetchYahooAssets(
-      xCandidates.map((s) => ({
-        symbol: s,
-        category: "stocks" as AssetCategory,
-        fallbackSymbols: EU_SUFFIXES.map((suf) => `${s}${suf}`),
-      }))
-    )).map((a) => ({ ...a, xSurfaced: true }))
+    trendingAssets = (
+      await fetchYahooAssets(
+        trendingCandidates.map((s) => ({
+          symbol: s,
+          category: "stocks" as AssetCategory,
+          fallbackSymbols: EU_SUFFIXES.map((suf) => `${s}${suf}`),
+        }))
+      )
+    ).map((a) => ({ ...a, tags: ["trending"] }))
+    console.log(`Resolved trending stocks: ${trendingAssets.length}/${trendingCandidates.length}`)
   }
 
-  const baseStocks = [...stocks, ...xSurfacedAssets]
+  const baseStocks = [...stocks, ...trendingAssets]
   const allForSignals = [...baseStocks, ...crypto, ...etfs, ...commodities]
   const signaled = computeSignals(allForSignals, market)
   const byKey = new Map(signaled.map((a) => [`${a.category}:${a.symbol}`, a]))
@@ -638,7 +613,6 @@ export async function fetchAllAssets() {
 
   return {
     stocks: computeTags(pick(baseStocks), market, all, mentionsMap.bySymbol, adrP25ByCategory),
-    xstocks: computeTags(pick(xstocks), market, all, mentionsMap.bySymbol, adrP25ByCategory),
     crypto: computeTags(pick(crypto), market, all, mentionsMap.bySymbol, adrP25ByCategory),
     etfs: computeTags(pick(etfs), market, all, mentionsMap.bySymbol, adrP25ByCategory),
     commodities: computeTags(pick(commodities), market, all, mentionsMap.bySymbol, adrP25ByCategory),

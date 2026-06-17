@@ -21,7 +21,6 @@ app.use(express.json())
 
 let dashboardData: DashboardData = {
   stocks: [],
-  xstocks: [],
   crypto: [],
   etfs: [],
   commodities: [],
@@ -53,7 +52,7 @@ async function refreshData() {
     dashboardData = { ...data, lastUpdated: new Date().toISOString() }
     const elapsed = ((Date.now() - start) / 1000).toFixed(1)
     console.log(
-      `[${elapsed}s] Data refreshed: ${data.stocks.length} stocks, ${data.xstocks.length} xStocks, ${data.crypto.length} crypto, ${data.etfs.length} ETFs, ${data.commodities.length} commodities`
+      `[${elapsed}s] Data refreshed: ${data.stocks.length} stocks, ${data.crypto.length} crypto, ${data.etfs.length} ETFs, ${data.commodities.length} commodities`
     )
   } catch (err) {
     refreshError = err instanceof Error ? err.message : String(err)

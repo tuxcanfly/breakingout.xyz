@@ -110,8 +110,8 @@ async function fetchFromInstance(instance: string, symbol: string): Promise<Nitt
 }
 
 // Cashtag extraction. Strict: only $TICKER form (1–5 uppercase letters,
-// optional trailing .B for share classes). This is the gate for x-surfaced
-// auto-add — anything looser risks flooding the universe with noise.
+// optional trailing .B for share classes). Anything looser risks flooding the
+// universe with noise.
 const CASHTAG_RE = /\$([A-Z]{1,5}(?:\.[A-Z])?)/g
 
 export function extractSymbolsFromTweets(tweets: NitterTweet[]): Set<string> {
@@ -162,7 +162,7 @@ async function fetchAccountTweets(account: TrackedAccount): Promise<NitterTweet[
 }
 
 // Strict-gated mentions map: tag -> Set of cashtags mentioned recently by that
-// account. Used both for per-asset tags and to seed x-surfaced auto-add.
+// account. Used for per-asset mention tags.
 export async function fetchTrackedMentionsMap(): Promise<{
   byTag: Record<string, Set<string>>
   bySymbol: Map<string, string[]>

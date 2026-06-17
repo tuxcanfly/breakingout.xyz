@@ -69,11 +69,10 @@ export const EUROPEAN_STOCKS: { symbol: string; yahooSymbol: string }[] = [
 export const EXTRA_STOCKS = [
   "AAOI","ABNB","ACHR","AEHR","AFRM","AI","ALAB","AMC","AMPG","AMSC",
   "ANF","AOSL","ARM","ASX","ASTS","ASYS","AXSM","AXTI","BB","BBAI",
-  "BDC","BKKT","BTBT","BWXT","CAVA","CAN","CCJ","CELH",
+  "BDC","BKKT","BTBT","BWEN","BWXT","CAVA","CAN","CCJ","CELH",
   "CERE","CIFR","CLSK","CLS","CORZ","COUR","CRSP","CRWV","CZR","DJT",
   "DKNG","DNN","DUOL","ELF","ENPH","EOSE","FCEL","FN","FSLR",
-  "GFS","GLBE","GME","HIMS","HIVE","HOOD",
-  "HUT","HYLN","INHD","IONQ","IOT","IPWR","IREN","JBL","JOBY",
+  "HUT","HYLN","INHD","IONQ","IOT","IPWR","IREN","JBL","JOBY","KEEL",
   "KTOS","LCID","LEU","LFUS","LUNR",
   "MARA","MDB","MEDP","MOD","MRNA","MSTR","NBIS","NET","NKLA","NU",
   "NVTS","OKLO","OKTA","ONDS","ON",

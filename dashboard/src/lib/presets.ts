@@ -57,10 +57,10 @@ export const PRESETS: Preset[] = [
     test: (a) => a.tags?.includes("rsi-oversold") ?? false,
   },
   {
-    id: "x-surfaced",
-    label: "X-surfaced",
-    title: "Auto-added from tracked-account mentions",
-    test: (a) => a.tags?.includes("x-surfaced") ?? false,
+    id: "trending",
+    label: "Trending",
+    title: "Stocks trending on Yahoo Finance and ApeWisdom",
+    test: (a) => a.tags?.includes("trending") ?? false,
   },
   {
     id: "all-ma-up",

@@ -1,4 +1,4 @@
-export type AssetCategory = "stocks" | "xstocks" | "crypto" | "etfs" | "commodities"
+export type AssetCategory = "stocks" | "crypto" | "etfs" | "commodities"
 
 export type TrendState = "uptrend" | "downtrend" | "transition" | "chop"
 
@@ -36,7 +36,6 @@ export interface ScreenerAsset {
   trendState?: TrendState
   rsi?: number
   conviction?: number
-  xSurfaced?: boolean
   mentionedBy?: string[]
   tags?: string[]
 }
@@ -63,7 +62,6 @@ export interface DashboardMeta {
 
 export interface DashboardData {
   stocks: ScreenerAsset[]
-  xstocks: ScreenerAsset[]
   crypto: ScreenerAsset[]
   etfs: ScreenerAsset[]
   commodities: ScreenerAsset[]

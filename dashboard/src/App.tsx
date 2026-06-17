@@ -58,7 +58,7 @@ const HELP_SECTIONS = [
   },
   {
     title: "Intel",
-    body: "A curated feed of recent posts from 7 tracked\nX accounts. $TICKER chips are clickable —\nin-universe names open detail; others jump to\nthe table with that filter. Mentions also tag\nmatching assets and seed X-surfaced auto-add.",
+    body: "A curated feed of recent posts from 7 tracked\nX accounts. $TICKER chips are clickable —\nin-universe names open detail; others jump to\nthe table with that filter. Mentions also tag\nmatching assets.",
   },
   {
     title: "COIL",
@@ -75,7 +75,7 @@ const HELP_SECTIONS = [
         {"\n"}• <strong>regime-aligned</strong> — trend matches SPY risk-on/off
         {"\n"}• <strong>reversal-watch</strong> — weak RS but MA10 up off oversold RSI
         {"\n"}• <strong>rsi-oversold</strong> / <strong>rsi-overbought</strong> — RSI ≤ 30 / ≥ 70
-        {"\n"}• <strong>x-surfaced</strong> — auto-added from tracked-account mentions
+        {"\n"}• <strong>trending</strong> — auto-added from Yahoo Finance / ApeWisdom
       </>
     ),
   },
@@ -118,6 +118,7 @@ const HELP_SECTIONS = [
         {"\n"}• breakout — strong + MA aligned
         {"\n"}• stage2 — up across 1M 3M 6M
         {"\n"}• tight-base — consolidation
+        {"\n"}• trending — auto-added from Yahoo Finance / ApeWisdom
         {"\n"}• xstock — tokenized equity available
         {"\n"}• aleabitoreddit — mentioned by{" "}
         <ExternalLink href="https://x.com/aleabitoreddit">@aleabitoreddit</ExternalLink>
@@ -362,7 +363,6 @@ function App() {
   const counts: Record<TabId, number> = {
     all: allAssets.length,
     stocks: data.stocks.length,
-    xstocks: data.xstocks.length,
     crypto: data.crypto.length,
     etfs: data.etfs.length,
     commodities: data.commodities.length,

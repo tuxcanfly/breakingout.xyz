@@ -27,7 +27,6 @@ function isNotable(asset: ScreenerAsset): boolean {
   return (
     (asset.tags?.includes("coil") ?? false) ||
     (asset.tags?.includes("actionable") ?? false) ||
-    (asset.xSurfaced ?? false) ||
     (asset.setupScore ?? 0) >= 80
   )
 }

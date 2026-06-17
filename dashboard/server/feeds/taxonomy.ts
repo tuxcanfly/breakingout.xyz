@@ -208,6 +208,8 @@ export function classifyAsset(symbol: string, category: AssetCategory, name = ""
 
   // Default fallback per category
   if (category === "etfs") return { sector: "Broad Market", subsector: "Equity ETF" }
-  if (category === "xstocks") return { sector: "Tokenized Equities", subsector: "Unclassified" }
+  if (category === "stocks" && normalizedName.toLowerCase().includes("xstock")) {
+    return { sector: "Tokenized Equities", subsector: "Unclassified" }
+  }
   return { sector: "Other", subsector: "Unclassified" }
 }
