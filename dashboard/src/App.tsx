@@ -58,7 +58,7 @@ const HELP_SECTIONS = [
   },
   {
     title: "Intel",
-    body: "A curated feed of recent posts from 8 tracked\nX accounts. $TICKER chips are clickable —\nin-universe names open detail; others jump to\nthe table with that filter. Mentions also tag\nmatching assets.",
+    body: "A curated feed of recent posts from 7 tracked\nX accounts. $TICKER chips are clickable —\nin-universe names open detail; others jump to\nthe table with that filter. Mentions also tag\nmatching assets.",
   },
   {
     title: "COIL",
