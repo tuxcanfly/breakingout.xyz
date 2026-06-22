@@ -58,11 +58,13 @@ export function AssetDetail({ asset, onClose }: Props) {
   const tradingViewUrl = isCrypto
     ? `https://www.tradingview.com/chart/?symbol=BINANCE:${asset.symbol.toUpperCase()}USDT`
     : `https://www.tradingview.com/chart/?symbol=${asset.symbol.toUpperCase()}`
+  const FINVIZ_CRYPTO_SYMBOLS = new Set([
+    "AAVE","ADA","APT","ATOM","AVAX","BCH","BNB","BTC","DOGE","DOT","ETH","HBAR","ICP","LINK","LTC","NEAR","OP","POL","SHIB","SOL","SUI","S","TAO","TON","TRUMP","TRX","UNI","WLFI","XLM","XRP","ZEC",
+  ])
+  const cryptoChartUrl = FINVIZ_CRYPTO_SYMBOLS.has(finvizSymbol.toUpperCase())
+    ? `https://finviz.com/crypto_charts.ashx?t=${finvizSymbol.toUpperCase()}USD&ty=c&ta=1&p=d&s=l`
+    : yahooUrl
   const maIcons = [
-    { label: "10", up: asset.ma10 === "up" },
-    { label: "20", up: asset.ma20 === "up" },
-    { label: "50", up: asset.ma50 === "up" },
-    { label: "200", up: asset.ma200 === "up" },
   ]
 
   return createPortal(
