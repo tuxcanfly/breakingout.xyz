@@ -48,14 +48,22 @@ export function AssetDetail({ asset, onClose }: Props) {
 
   if (!asset) return null
 
+  const isCrypto = asset.category === "crypto"
   const chartSymbol = asset.chartSymbol || asset.symbol
-  const finvizUrl = `https://finviz.com/chart.ashx?t=${chartSymbol.toUpperCase()}&ty=c&ta=1&p=d&s=l`
-  const yahooUrl = `https://ca.finance.yahoo.com/quote/${chartSymbol.toUpperCase()}/`
-
-  const maIcons = [asset.ma10, asset.ma20, asset.ma50, asset.ma200].map((ma, i) => ({
-    label: ["10", "20", "50", "200"][i],
-    up: ma === "up",
-  }))
+  const finvizSymbol = isCrypto ? chartSymbol.replace("-USD", "") : chartSymbol
+  const finvizUrl = `https://finviz.com/chart.ashx?t=${finvizSymbol.toUpperCase()}&ty=c&ta=1&p=d&s=l`
+  const yahooUrl = isCrypto
+    ? `https://ca.finance.yahoo.com/quote/${chartSymbol.toUpperCase()}/chart`
+    : `https://ca.finance.yahoo.com/quote/${chartSymbol.toUpperCase()}/`
+  const tradingViewUrl = isCrypto
+    ? `https://www.tradingview.com/chart/?symbol=BINANCE:${asset.symbol.toUpperCase()}USDT`
+    : `https://www.tradingview.com/chart/?symbol=${asset.symbol.toUpperCase()}`
+  const maIcons = [
+    { label: "10", up: asset.ma10 === "up" },
+    { label: "20", up: asset.ma20 === "up" },
+    { label: "50", up: asset.ma50 === "up" },
+    { label: "200", up: asset.ma200 === "up" },
+  ]
 
   return createPortal(
     <div
@@ -200,7 +208,7 @@ export function AssetDetail({ asset, onClose }: Props) {
             style={{ borderColor: "var(--sol-base2)" }}
           >
             <img
-              src={finvizUrl}
+              src={isCrypto ? cryptoChartUrl : finvizUrl}
               alt={`${asset.symbol} chart`}
               className="w-full"
               style={{ height: 320, objectFit: "fill", background: "#fff" }}
@@ -220,16 +228,16 @@ export function AssetDetail({ asset, onClose }: Props) {
                 className="text-[11px] font-semibold"
                 style={{ color: "var(--sol-blue)" }}
               >
-                Yahoo Finance →
+                {isCrypto ? "Yahoo Chart →" : "Yahoo Finance →"}
               </a>
               <a
-                href={`https://finviz.com/quote.ashx?t=${asset.symbol.toUpperCase()}`}
+                href={tradingViewUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[11px] font-semibold"
                 style={{ color: "var(--sol-blue)" }}
               >
-                Finviz →
+                TradingView →
               </a>
             </div>
           </div>

@@ -122,15 +122,17 @@ app.use((req, res, next) => {
 const PORT = parseInt(process.env.PORT || "3001")
 
 // ── Startup + scheduled refresh ────────────────────────────────────────────
-
-await refreshData()
-
-// Refresh every 15 minutes in production
-if (process.env.NODE_ENV === "production") {
-  setInterval(refreshData, 15 * 60 * 1000)
-}
+// Start listening immediately so the dev-server proxy works; refresh data in
+// the background. The dashboard endpoint serves stale/cached data until the
+// first refresh completes.
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
   console.log(`Frontend: http://localhost:${PORT}`)
+})
+
+refreshData().then(() => {
+  if (process.env.NODE_ENV === "production") {
+    setInterval(refreshData, 15 * 60 * 1000)
+  }
 })

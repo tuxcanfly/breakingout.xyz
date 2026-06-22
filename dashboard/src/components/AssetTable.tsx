@@ -347,7 +347,12 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
               >
                 <td className={`px-2 ${cellV} sticky-col`}>
                   <div className="flex items-center gap-1.5">
-                    <ChartHover symbol={asset.symbol} name={asset.name}>
+                    <ChartHover
+                      symbol={asset.symbol}
+                      name={asset.name}
+                      category={asset.category}
+                      chartSymbol={asset.chartSymbol}
+                    >
                       <span
                         className="font-bold"
                         style={{

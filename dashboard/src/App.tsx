@@ -196,10 +196,25 @@ function App() {
   const lastLoadRef = useRef(0)
 
   useEffect(() => {
-    const refresh = () => {
-      loadData().then(() => {
+    let cancelled = false
+    const refresh = async () => {
+      if (cancelled) return
+      try {
+        setLoading(true)
+        setError(null)
+        const d = await fetchDashboard()
+        setData(d)
         lastLoadRef.current = Date.now()
-      })
+        // If server is still refreshing and arrays are empty, poll again shortly.
+        if (d._meta?.refreshing && d.stocks.length === 0) {
+          window.setTimeout(refresh, 3000)
+          return
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load data")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
     const initialLoad = window.setTimeout(refresh, 0)
     const onFocus = () => {
@@ -210,11 +225,12 @@ function App() {
     document.addEventListener("visibilitychange", onFocus)
     window.addEventListener("focus", onFocus)
     return () => {
+      cancelled = true
       window.clearTimeout(initialLoad)
       document.removeEventListener("visibilitychange", onFocus)
       window.removeEventListener("focus", onFocus)
     }
-  }, [loadData])
+  }, [])
 
   // Keyboard shortcuts
   useEffect(() => {

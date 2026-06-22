@@ -4,6 +4,7 @@ const API_KEY = process.env.FINNHUB_API_KEY
 const BASE_URL = "https://finnhub.io/api/v1"
 const CACHE_TTL = 24 * 60 * 60 * 1000
 const FETCH_DELAY_MS = 1_000
+const PER_REFRESH_CAP = 30
 
 interface CacheEntry {
   data: AnalystRating
@@ -126,7 +127,7 @@ export async function fetchAnalystRatings(assets: ScreenerAsset[]): Promise<Map<
     })
     .map((a) => a.symbol)
     .filter((s, i, arr) => arr.indexOf(s) === i && !getCachedRating(s))
-    .slice(0, 120)
+    .slice(0, PER_REFRESH_CAP)
 
   if (candidates.length === 0) return result
 
