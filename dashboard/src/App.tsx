@@ -26,7 +26,8 @@ function tightnessScore(a: ScreenerAsset): number {
   const mas = [a.ma10, a.ma20, a.ma50, a.ma200]
   const aligned = mas.every((m) => m === "up") || mas.every((m) => m === "down")
   const alignPts = aligned ? 50 : 0
-  const adrPts = Math.max(0, 50 - (a.adrPercent / 20) * 50)
+  const adr = a.adrPercent ?? 0
+  const adrPts = Math.max(0, 50 - (adr / 20) * 50)
   return alignPts + adrPts
 }
 
@@ -116,6 +117,8 @@ const HELP_SECTIONS = [
         {"\n"}• actionable — conviction ≥ 70 with risk ≤ 55
         {"\n"}• momentum-leader — top 5% 1M return
         {"\n"}• breakout — strong + MA aligned
+        {"\n"}• extended-up — ≥ 2.5 ATR above 50 SMA (short-term overbought)
+        {"\n"}• extended-down — ≥ 2.5 ATR below 50 SMA (short-term oversold)
         {"\n"}• stage2 — up across 1M 3M 6M
         {"\n"}• tight-base — consolidation
         {"\n"}• trending — auto-added from Yahoo Finance / ApeWisdom

@@ -448,7 +448,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 </td>
                 <td className={`px-2 ${cellV}`}>
                   <ScorePill
-                    value={asset.setupScore ?? (getTightness ? getTightness(asset) : 0)}
+                    value={asset.setupScore ?? (getTightness ? getTightness(asset) : 0) ?? 0}
                     kind="setup"
                   />
                 </td>
@@ -459,7 +459,7 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                   className={`px-2 ${cellV} font-medium tabular-nums`}
                   style={{ color: "var(--sol-base00)", fontSize: dense ? "10px" : "11px" }}
                 >
-                  {asset.adrPercent.toFixed(1)}%
+                  {asset.adrPercent?.toFixed(1) ?? "-"}%
                 </td>
                 <td className={`px-2 ${cellV}`}>
                   <div className="flex gap-0.5">
@@ -703,6 +703,8 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   "reversal-watch": { bg: "rgba(181,137,0,0.12)", color: "#b58900", border: "rgba(181,137,0,0.30)" },
   "rsi-overbought": { bg: "rgba(220,50,47,0.10)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
   "rsi-oversold": { bg: "rgba(42,161,152,0.12)", color: "#2aa198", border: "rgba(42,161,152,0.30)" },
+  "extended-up": { bg: "rgba(220,50,47,0.10)", color: "#dc322f", border: "rgba(220,50,47,0.25)" },
+  "extended-down": { bg: "rgba(42,161,152,0.12)", color: "#2aa198", border: "rgba(42,161,152,0.30)" },
   trending: { bg: "rgba(211,54,130,0.12)", color: "#d33682", border: "rgba(211,54,130,0.30)" },
   aleabitoreddit: { bg: "rgba(211,54,130,0.10)", color: "#d33682", border: "rgba(211,54,130,0.25)" },
   realsimpleariel: { bg: "rgba(38,139,210,0.10)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },

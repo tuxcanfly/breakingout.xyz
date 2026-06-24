@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 837
+// Total entries: 854
 
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
@@ -906,5 +906,21 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "GO": { sector: "Consumer Staples", subsector: "Grocery Stores" },
   "SONY": { sector: "Consumer Discretionary", subsector: "Consumer Electronics" },
   "RE": { sector: "Financials", subsector: "Reinsurance" },
-  "SKYQ": { sector: "Industrials", subsector: "Aerospace & Defense" },
+  "WEN": { sector: "Consumer Discretionary", subsector: "Restaurants" },
+  "CBRS": { sector: "Information Technology", subsector: "Semiconductors" },
+  "OI": { sector: "Materials", subsector: "Paper & Plastic Packaging Products & Materials" },
+  "PR": { sector: "Energy", subsector: "Oil & Gas Exploration & Production" },
+  "OR": { sector: "Materials", subsector: "Gold Mining" },
+  "BJ": { sector: "Consumer Staples", subsector: "Consumer Staples Merchandise Retail" },
+  "OS": { sector: "Information Technology", subsector: "Application Software" },
+  "RUN": { sector: "Utilities", subsector: "Independent Power Producers & Energy Traders" },
+  "HTZ": { sector: "Industrials", subsector: "Rental & Leasing Services" },
+  "PLSM": { sector: "Health Care", subsector: "Health Care Equipment" },
+  "ABVX": { sector: "Health Care", subsector: "Biotechnology" },
+  "CUPR": { sector: "Health Care", subsector: "Health Care Supplies" },
+  "FRTT": { sector: "Consumer Discretionary", subsector: "Household Products" },
+  "ADTX": { sector: "Health Care", subsector: "Biotechnology" },
+  "ABSI": { sector: "Health Care", subsector: "Biotechnology" },
+  "GPUS": { sector: "Information Technology", subsector: "Cloud Infrastructure" },
+  "RKT": { sector: "Financials", subsector: "Consumer Finance" },
 }

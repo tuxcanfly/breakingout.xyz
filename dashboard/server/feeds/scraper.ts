@@ -7,6 +7,7 @@ import {
   isQuietCoil,
   isRegimeAligned,
   isReversalWatch,
+  atrExtensionState,
 } from "./indicators.js"
 import { fetchTrendingStocks } from "./trending.js"
 import { fetchAnalystRatings, mergeAnalystRatings } from "./finnhub.js"
@@ -115,6 +116,9 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetM
   const classification = classifyAsset(meta.underlyingSymbol || symbol, cat, meta.name)
   const tightness = coilTightness(close, sma10, sma20, sma50, adr)
   const distToHighPct = high3M > 0 ? parseFloat(((close / high3M - 1) * 100).toFixed(1)) : undefined
+  const atrExtension = close > 0 && sma50 > 0 && adr > 0
+    ? parseFloat(((close - sma50) / (close * (adr / 100))).toFixed(1))
+    : undefined
   return {
     symbol: displaySymbol,
     name: meta.name || displaySymbol,
@@ -126,6 +130,7 @@ function makeAsset(symbol: string, v: number[], cat: AssetCategory, meta: AssetM
     tightness: tightness !== undefined && tightness < 4 ? "tight" : "",
     coilTightness: tightness,
     distToHighPct,
+    atrExtension,
     adrPercent: parseFloat(adr.toFixed(1)),
     ma10: up(sma10 || sma20),
     ma20: up(sma20),
@@ -549,6 +554,8 @@ function computeTags(
     if (a.distToHighPct !== undefined && isQuietCoil(a, adrP25ByCategory[a.category] ?? 0)) t.push("quiet-coil")
     if (isRegimeAligned(a, market)) t.push("regime-aligned")
     if (isReversalWatch(a)) t.push("reversal-watch")
+    const ext = atrExtensionState(a)
+    if (ext) t.push(ext)
     const mentioners = mentionsBySymbol.get(a.symbol)
     if (mentioners && mentioners.length > 0) {
       for (const tag of mentioners) t.push(tag)

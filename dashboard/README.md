@@ -20,7 +20,28 @@ npm install
 npm run dev
 ```
 
+## Production with PM2
+
+```bash
+cd dashboard
+npm install
+npm run build
+npm run pm2:start
+```
+
+Other PM2 commands:
+
+```bash
+npm run pm2:restart   # restart the process
+npm run pm2:stop      # stop the process
+npm run pm2:logs      # tail logs
+npm run pm2:delete    # remove from pm2
+```
+
+Logs are written to `dashboard/logs/`.
+
 ## Deploy to Fly.io
+
 
 ```bash
 # Install Fly CLI

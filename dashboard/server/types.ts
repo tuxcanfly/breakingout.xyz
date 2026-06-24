@@ -33,6 +33,7 @@ export interface ScreenerAsset {
   coilScore?: number
   coilTightness?: number
   distToHighPct?: number
+  atrExtension?: number
   trendState?: TrendState
   rsi?: number
   conviction?: number

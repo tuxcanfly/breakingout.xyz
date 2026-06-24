@@ -89,6 +89,9 @@ async function tryFetchYahoo(yahooSymbol: string, seed: YahooAssetSeed): Promise
   )
   const high3M = Math.max(...bars.slice(-63).map((b) => b.high))
   const tightness = coilTightness(close, sma10, sma20, sma50, adrPercent)
+  const atrExtension = close > 0 && sma50 > 0 && adrPercent > 0
+    ? round((close - sma50) / (close * (adrPercent / 100)))
+    : undefined
   const rsi = computeRsi(bars.map((b) => b.close))
   const volume = average(bars.slice(-20).map((b) => b.volume || 0))
   const up = (s: number) => close >= s ? "up" as const : "down" as const
@@ -102,9 +105,9 @@ async function tryFetchYahoo(yahooSymbol: string, seed: YahooAssetSeed): Promise
     sector: classification.sector,
     subsector: classification.subsector,
     avgVolume: formatVolume(volume),
-    tightness: tightness !== undefined && tightness < 4 ? "tight" : "",
     coilTightness: tightness,
     distToHighPct: high3M > 0 ? round((close / high3M - 1) * 100) : undefined,
+    atrExtension,
     adrPercent: round(adrPercent),
     ma10: up(sma10),
     ma20: up(sma20),

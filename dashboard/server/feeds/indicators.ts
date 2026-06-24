@@ -81,3 +81,14 @@ export function isReversalWatch(a: ScreenerAsset): boolean {
   if (a.ma10 !== "up") return false
   return a.rsi !== undefined && a.rsi < 40
 }
+
+// ATR extension: distance from the 50 SMA measured in average daily range units.
+// Jeff Sun's 50 SMA ATR extension heuristic, backtested by Trading Time Machine
+// on Nasdaq 100 data, flags when price has moved into statistically stretched
+// territory relative to its recent volatility. Positive = above the SMA.
+export function atrExtensionState(a: ScreenerAsset): "extended-up" | "extended-down" | null {
+  if (a.atrExtension === undefined) return null
+  if (a.atrExtension >= 2.5) return "extended-up"
+  if (a.atrExtension <= -2.5) return "extended-down"
+  return null
+}

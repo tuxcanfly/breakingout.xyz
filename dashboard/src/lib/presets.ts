@@ -51,6 +51,18 @@ export const PRESETS: Preset[] = [
     test: (a) => a.tags?.includes("reversal-watch") ?? false,
   },
   {
+    id: "extended-up",
+    label: "Extended up",
+    title: "Price stretched ≥ 2.5 ATR above the 50 SMA — short-term overbought",
+    test: (a) => a.tags?.includes("extended-up") ?? false,
+  },
+  {
+    id: "extended-down",
+    label: "Extended down",
+    title: "Price stretched ≥ 2.5 ATR below the 50 SMA — short-term oversold",
+    test: (a) => a.tags?.includes("extended-down") ?? false,
+  },
+  {
     id: "rsi-oversold",
     label: "RSI oversold",
     title: "RSI ≤ 30",
