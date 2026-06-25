@@ -950,4 +950,9 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "NEXR": { sector: "Consumer Discretionary", subsector: "Internet Retail" },
   "NNOX": { sector: "Health Care", subsector: "Health Care Equipment" },
   "WAVE": { sector: "Utilities", subsector: "Independent Power Producers & Energy Traders" },
+  "GRPN": { sector: "Consumer Discretionary", subsector: "Broadline Retail" },
+  "ANY": { sector: "Financials", subsector: "Capital Markets" },
+  "ILLR": { sector: "Information Technology", subsector: "Application Software" },
+  "INOD": { sector: "Industrials", subsector: "Research & Consulting Services" },
+  "AYI": { sector: "Industrials", subsector: "Electrical Components & Equipment" },
 }

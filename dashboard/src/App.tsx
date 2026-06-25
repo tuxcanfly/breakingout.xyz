@@ -11,6 +11,7 @@ import { IntelFeed } from "./components/IntelFeed"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./components/ui/sheet"
 import { PRESETS } from "./lib/presets"
 import { useNewSymbols } from "./lib/useNewSymbols"
+import { useStarredSymbols } from "./lib/useStarredSymbols"
 import { Input } from "./components/ui/input"
 import {
   Search,
@@ -20,6 +21,7 @@ import {
   LayoutList,
   LayoutGrid,
   Radio,
+  Star,
 } from "lucide-react"
 
 function tightnessScore(a: ScreenerAsset): number {
@@ -176,10 +178,12 @@ function App() {
   const [filter, setFilter] = useState("")
   const [sectorFilter, setSectorFilter] = useState<string | null>(null)
   const [presetFilter, setPresetFilter] = useState<string | null>(null)
+  const [showStarredOnly, setShowStarredOnly] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dense, setDense] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<ScreenerAsset | null>(null)
   const [showIntel, setShowIntel] = useState(false)
+  const [starred, toggleStarred] = useStarredSymbols()
   const searchRef = useRef<HTMLInputElement>(null)
   const helpRef = useRef<HTMLDivElement>(null)
 
@@ -379,6 +383,10 @@ function App() {
     if (preset) {
       filtered = filtered.filter(preset.test)
     }
+  }
+
+  if (showStarredOnly) {
+    filtered = filtered.filter((a) => starred.has(a.symbol))
   }
 
   const counts: Record<TabId, number> = {
@@ -584,6 +592,36 @@ function App() {
                 )}
               </button>
 
+              {/* Starred toggle */}
+              <button
+                onClick={() => setShowStarredOnly((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-semibold transition-colors cursor-pointer"
+                style={{
+                  fontSize: "12px",
+                  backgroundColor: showStarredOnly ? "var(--sol-yellow)" : "var(--sol-base2)",
+                  color: showStarredOnly ? "var(--sol-base03)" : "var(--sol-base01)",
+                  border: "1px solid var(--sol-base1)",
+                }}
+                title="Show only starred tickers"
+              >
+                <Star size={13} fill={showStarredOnly ? "currentColor" : "none"} />
+                Starred
+                {starred.size > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center px-1 py-0 rounded-full tabular-nums"
+                    style={{
+                      fontSize: "9px",
+                      minWidth: 16,
+                      height: 14,
+                      backgroundColor: showStarredOnly ? "rgba(0,0,0,0.15)" : "var(--sol-base3)",
+                    }}
+                  >
+                    {starred.size}
+                  </span>
+                )}
+              </button>
+
+
               {/* Utility buttons */}
               <div
                 className="flex items-center gap-0.5 rounded-lg border p-0.5"
@@ -722,6 +760,8 @@ function App() {
             dense={dense}
             highlight={filter}
             newSymbols={newSymbols}
+            starred={starred}
+            onToggleStar={toggleStarred}
             onRowClick={(asset) => setSelectedAsset(asset)}
           />
         )}

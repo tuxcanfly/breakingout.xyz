@@ -7,6 +7,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Star,
 } from "lucide-react"
 import { Badge } from "./ui/badge"
 
@@ -16,6 +17,8 @@ interface Props {
   dense?: boolean
   highlight?: string
   newSymbols?: Set<string>
+  starred?: Set<string>
+  onToggleStar?: (symbol: string) => void
   onRowClick?: (asset: ScreenerAsset) => void
 }
 
@@ -130,7 +133,7 @@ function HighlightText({ text, query }: { text: string; query: string }) {
   )
 }
 
-export function AssetTable({ assets, getTightness, dense = false, highlight = "", newSymbols, onRowClick }: Props) {
+export function AssetTable({ assets, getTightness, dense = false, highlight = "", newSymbols, starred, onToggleStar, onRowClick }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("conviction")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
@@ -198,6 +201,13 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                 borderBottom: "1px solid var(--sol-base1)",
               }}
             >
+              <th
+                className={`px-2 ${thV} text-center font-semibold whitespace-nowrap`}
+                style={{ color: "var(--sol-base01)", fontSize: "11px" }}
+                title="Star tickers to filter them quickly"
+              >
+                <Star size={12} />
+              </th>
               <SortHeader
                 label="Sym"
                 sortId="symbol"
@@ -345,6 +355,25 @@ export function AssetTable({ assets, getTightness, dense = false, highlight = ""
                   cursor: onRowClick ? "pointer" : "default",
                 }}
               >
+                <td className={`px-2 ${cellV} text-center`}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleStar?.(asset.symbol)
+                    }}
+                    className="cursor-pointer transition-colors"
+                    style={{
+                      color: starred?.has(asset.symbol) ? "var(--sol-yellow)" : "var(--sol-base1)",
+                    }}
+                    title={starred?.has(asset.symbol) ? "Unstar" : "Star this ticker"}
+                  >
+                    <Star
+                      size={14}
+                      fill={starred?.has(asset.symbol) ? "currentColor" : "none"}
+                      strokeWidth={starred?.has(asset.symbol) ? 0 : 1.5}
+                    />
+                  </button>
+                </td>
                 <td className={`px-2 ${cellV} sticky-col`}>
                   <div className="flex items-center gap-1.5">
                     <ChartHover
