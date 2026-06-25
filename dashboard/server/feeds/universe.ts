@@ -67,19 +67,19 @@ export const EUROPEAN_STOCKS: { symbol: string; yahooSymbol: string }[] = [
 ]
 
 export const EXTRA_STOCKS = [
-  "AAOI","ABNB","ACHR","AEHR","AFRM","AI","ALAB","AMC","AMPG","AMSC",
-  "ANF","AOSL","ARM","ASX","ASTS","ASYS","AXSM","AXTI","BB","BBAI",
-  "BDC","BKKT","BTBT","BWEN","BWXT","CAVA","CAN","CCJ","CELH",
-  "CERE","CIFR","CLSK","CLS","CORZ","COUR","CRSP","CRWV","CZR","DJT",
-  "DKNG","DNN","DUOL","ELF","ENPH","EOSE","FCEL","FN","FSLR",
-  "HUT","HYLN","INHD","IONQ","IOT","IPWR","IREN","JBL","JOBY","KEEL",
-  "KTOS","LCID","LEU","LFUS","LUNR",
-  "MARA","MDB","MEDP","MOD","MRNA","MSTR","NBIS","NET","NKLA","NU",
-  "NVTS","OKLO","OKTA","ONDS","ON",
-  "OPEN","PLUG","POET","POWI","QBTS","QUBT","RBLX","RDDT","RELL","RGTI","RIOT",
-  "RIVN","RKLB","ROKU","RXRX","SEDG","SHOP","SLNH","SMR",
-  "SNAP","SOFI","SOUN","SPOT",
-  "SQ","TEAM","TOST","TSEM","TWLO","U","UEC","UPST","VKTX","VFS","VICR","VIVO",
+  "AAOI","ABNB","ACHR","AEHR","AFRM","AI","AIP","ALAB","AMBQ","AMC",
+  "AMPG","AMSC","ANF","AOSL","ARM","ASTS","ASX","ASYS","AXSM","AXTI",
+  "BAND","BB","BBAI","BDC","BE","BKKT","BRUM","BTBT","BW","BWEN",
+  "BWXT","CAN","CAVA","CCJ","CELH","CERE","CIFR","CLS","CLSK","CORZ",
+  "COUR","CRDO","CRSP","CRWV","CZR","DGXN","DJT","DKNG","DNN","DOCN",
+  "DUOL","ELF","ENPH","EOSE","FCEL","FN","FSLR","HUT","HYLN","ICHR",
+  "INHD","IONQ","IOT","IPWR","IREN","JBL","JOBY","KEEL","KTOS","LASE",
+  "LCID","LEU","LFUS","LUNR","MARA","MDB","MEDP","MOD","MRNA","MSTR",
+  "NBIS","NET","NKLA","NU","NVTS","OKLO","OKTA","ON","ONDS","OPEN",
+  "PENG","PLUG","POET","POWI","QBTS","QTEX","QUBT","QUCY","RBLX","RDDT",
+  "RELL","RGNT","RGTI","RIOT","RIVN","RKLB","ROKU","RXRX","SEDG","SHAZ",
+  "SHOP","SLNH","SMR","SNAP","SOFI","SOUN","SPOT","SQ","STI","TEAM",
+  "TOST","TSEM","TWLO","U","UEC","UPST","VFS","VICR","VIVO","VKTX",
   "VSH","WING","WOLF","WULF","YSS","ZS",
 ]
 

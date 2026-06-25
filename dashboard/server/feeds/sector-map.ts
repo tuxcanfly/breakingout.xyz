@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 854
+// Total entries: 881
 
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
@@ -923,4 +923,31 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "ABSI": { sector: "Health Care", subsector: "Biotechnology" },
   "GPUS": { sector: "Information Technology", subsector: "Cloud Infrastructure" },
   "RKT": { sector: "Financials", subsector: "Consumer Finance" },
+  "AIP": { sector: "Information Technology", subsector: "Semiconductors" },
+  "AMBQ": { sector: "Information Technology", subsector: "Semiconductors" },
+  "BAND": { sector: "Information Technology", subsector: "Systems Software" },
+  "BE": { sector: "Industrials", subsector: "Electrical Components & Equipment" },
+  "BRUM": { sector: "Information Technology", subsector: "Systems Software" },
+  "BW": { sector: "Industrials", subsector: "Industrial Machinery & Supplies & Components" },
+  "CRDO": { sector: "Information Technology", subsector: "Semiconductors" },
+  "DGXN": { sector: "Utilities", subsector: "Independent Power Producers & Energy Traders" },
+  "DOCN": { sector: "Information Technology", subsector: "Systems Software" },
+  "ICHR": { sector: "Information Technology", subsector: "Semiconductor Materials & Equipment" },
+  "LASE": { sector: "Industrials", subsector: "Industrial Machinery & Supplies & Components" },
+  "PENG": { sector: "Information Technology", subsector: "IT Services" },
+  "QTEX": { sector: "Information Technology", subsector: "Technology Hardware, Storage & Peripherals" },
+  "QUCY": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
+  "RGNT": { sector: "Health Care", subsector: "Health Care Supplies" },
+  "SHAZ": { sector: "Information Technology", subsector: "IT Services" },
+  "STI": { sector: "Industrials", subsector: "Electrical Components & Equipment" },
+  "JACK": { sector: "Consumer Discretionary", subsector: "Restaurants" },
+  "REAL": { sector: "Consumer Discretionary", subsector: "Apparel Retail" },
+  "KUST": { sector: "Communication Services", subsector: "Movies & Entertainment" },
+  "IQST": { sector: "Communication Services", subsector: "Telecom Services" },
+  "WYY": { sector: "Information Technology", subsector: "IT Services" },
+  "AZI": { sector: "Consumer Discretionary", subsector: "Auto Retail" },
+  "MIMI": { sector: "Industrials", subsector: "Construction & Engineering" },
+  "NEXR": { sector: "Consumer Discretionary", subsector: "Internet Retail" },
+  "NNOX": { sector: "Health Care", subsector: "Health Care Equipment" },
+  "WAVE": { sector: "Utilities", subsector: "Independent Power Producers & Energy Traders" },
 }
