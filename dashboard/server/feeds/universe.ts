@@ -67,34 +67,23 @@ export const EUROPEAN_STOCKS: { symbol: string; yahooSymbol: string }[] = [
 ]
 
 export const EXTRA_STOCKS = [
-  "AAOI", "ABNB", "ACHC", "ACHR", "AEHR", "AFRM",
-  "AI", "AIP", "ALAB", "ALGM", "AMBQ", "AMC",
-  "AMPG", "AMSC", "ANF", "AOSL", "APPS", "ARM",
-  "ASTS", "ASX", "ASYS", "AXSM", "AXTI", "BAND",
-  "BB", "BBAI", "BBWI", "BDC", "BE", "BFLY",
-  "BKKT", "BROS", "BRUM", "BTBT", "BW", "BWEN",
-  "BWXT", "CAN", "CAVA", "CCJ", "CELH", "CERE",
-  "CIFR", "CLS", "CLSK", "COMP", "CORZ", "COUR",
-  "CRDO", "CRSP", "CRWV", "CZR", "DGXN", "DJT",
-  "DKNG", "DNN", "DOCN", "DUOL", "ELF", "ENPH",
-  "EOSE", "FCEL", "FN", "FROG", "FSLR", "HUT",
-  "HYLN", "ICHR", "INHD", "INIO", "IONQ", "IOT",
-  "IPWR", "IREN", "JBL", "JBLU", "JOBY", "KEEL",
-  "KSS", "KTOS", "LASE", "LCID", "LEU", "LFUS",
-  "LUNR", "MARA", "MDB", "MEDP", "MGNI", "MOD",
-  "MRNA", "MSTR", "MXL", "NAVN", "NBIS", "NESR",
-  "NET", "NKLA", "NU", "NVTS", "NWL", "OKLO",
-  "OKTA", "ON", "ONDS", "OPEN", "OSCR", "PBF",
-  "PENG", "PLUG", "POET", "POWI", "QBTS", "QNT",
-  "QTEX", "QUBT", "QUCY", "RBLX", "RDDT", "RELL",
-  "RELY", "RGNT", "RGTI", "RHI", "RIOT", "RIVN",
-  "RKLB", "ROKU", "RXRX", "SEDG", "SHAZ", "SHOP",
-  "SLNH", "SMR", "SNAP", "SNOW", "SOFI", "SOUN",
-  "SPOT", "SQ", "STI", "STUB", "TEAM", "TENB",
-  "TOST", "TSEM", "TWLO", "TXG", "U", "UEC",
-  "UMC", "UPST", "VFS", "VICR", "VIVO", "VKTX",
-  "VRNS", "VSH", "VSXY", "W", "WING", "WOLF",
-  "WRBY", "WULF", "YSS", "ZS"
+"AAOI","ABNB","ACHC","ACHR","AEHR","AFRM","AI","AIP","ALAB","ALGM",
+"AMBQ","AMC","AMPG","AMSC","ANF","AOSL","APPS","ARM","ASTS","ASX",
+"ASYS","AXSM","AXTI","BAND","BB","BBAI","BBWI","BDC","BE","BFLY",
+"BKKT","BROS","BRUM","BTBT","BW","BWEN","BWXT","CAN","CAVA","CCJ",
+"CELH","CERE","CIFR","CLS","CLSK","COMP","CORZ","COUR","CRDO","CRSP",
+"CRWV","CZR","DGXN","DJT","DKNG","DNN","DOCN","DUOL","ELF","ENPH",
+"EOSE","FCEL","FN","FROG","FSLR","GLXY","HUT","HYLN","ICHR","INHD",
+"INIO","IONQ","IOT","IPWR","IREN","JBL","JBLU","JOBY","KEEL","KSS",
+"KTOS","LAC","LASE","LCID","LEU","LFUS","LUNR","MARA","MDB","MEDP",
+"MGNI","MOD","MRNA","MSTR","MXL","NAVN","NBIS","NESR","NET","NKLA",
+"NU","NVTS","NWL","OKLO","OKTA","ON","ONDS","OPEN","OSCR","PBF",
+"PENG","PLUG","POET","POWI","QBTS","QNT","QTEX","QUBT","QUCY","RBLX",
+"RDDT","RELL","RELY","RGNT","RGTI","RHI","RIOT","RIVN","RKLB","ROKU",
+"RXRX","SEDG","SHAZ","SHOP","SLNH","SMR","SNAP","SNOW","SOFI","SOUN",
+"SPOT","SQ","STI","STUB","TEAM","TENB","TOST","TSEM","TWLO","TXG",
+"U","UEC","UMC","UPST","VFS","VICR","VIVO","VKTX","VRNS","VSH",
+"VSXY","W","WING","WOLF","WRBY","WULF","YSS","ZS"
 ]
 
 // ── ETF universe ──────────────────────────────────────────────────────────
@@ -122,7 +111,7 @@ export const ETF_UNIVERSE = [
   "IBIT","FBTC","ETHU","BITB","ARKB","HODL","BITO","BITX","WGMI",
   // Thematic
   "TAN","ICLN","QCLN","PBW","PBD","ERTH","LIT","REMX","BOTZ","ROBO",
-  "CLOU","SKYY","WCLD","FINX","IPAY","SOCL","ESPO","BATT","PRNT","IDRV",
+  "CLOU","SKYY","WCLD","FINX","GNOM","IPAY","SOCL","ESPO","BATT","PRNT","IDRV",
   // Leveraged / Inverse
   "TQQQ","SQQQ","SPXL","SPXS","QLD","SSO","UPRO","SH","SDS","PSQ",
   "TECL","LABU","FAS","FAZ","SOXL","SOXS",
