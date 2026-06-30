@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 881
+// Total entries: 884
 
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
@@ -994,4 +994,7 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "SOAR": { sector: "Industrials", subsector: "Aviation Services" },
   "VRDN": { sector: "Health Care", subsector: "Biotechnology" },
   "BATL": { sector: "Energy", subsector: "Oil & Gas Exploration & Production" },
+  "TEM": { sector: "Health Care", subsector: "Health Care Technology" },
+  "FORM": { sector: "Information Technology", subsector: "Semiconductor Materials & Equipment" },
+  "SITM": { sector: "Information Technology", subsector: "Semiconductors" },
 }
