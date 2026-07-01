@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 884
+// Total entries: 893
 
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
@@ -997,4 +997,13 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "TEM": { sector: "Health Care", subsector: "Health Care Technology" },
   "FORM": { sector: "Information Technology", subsector: "Semiconductor Materials & Equipment" },
   "SITM": { sector: "Information Technology", subsector: "Semiconductors" },
+  "GDYN": { sector: "Information Technology", subsector: "IT Consulting & Other Services" },
+  "SPSC": { sector: "Information Technology", subsector: "Application Software" },
+  "VU": { sector: "Information Technology", subsector: "Electronic Components" },
+  "SAAS": { sector: "Information Technology", subsector: "Application Software" },
+  "NXQ": { sector: "Information Technology", subsector: "Technology Hardware, Storage & Peripherals" },
+  "CHH": { sector: "Consumer Discretionary", subsector: "Household Products" },
+  "045340": { sector: "Information Technology", subsector: "Application Software" },
+  "SPR": { sector: "Information Technology", subsector: "IT Consulting & Other Services" },
+  "7565": { sector: "Information Technology", subsector: "Technology Hardware, Storage & Peripherals" },
 }
