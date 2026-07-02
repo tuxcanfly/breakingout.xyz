@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 977
+// Total entries: 985
 
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
@@ -1089,4 +1089,11 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "ISSC": { sector: "Industrials", subsector: "Aerospace & Defense" },
   "AIR": { sector: "Industrials", subsector: "Aerospace & Defense" },
   "POWW": { sector: "Industrials", subsector: "Aerospace & Defense" },
+  "FLY": { sector: "Industrials", subsector: "Aerospace & Defense" },
+  "ECHO": { sector: "Communication Services", subsector: "Telecom Services" },
+  "SPIR": { sector: "Industrials", subsector: "Specialty Business Services" },
+  "VSAT": { sector: "Information Technology", subsector: "Communications Equipment" },
+  "GSAT": { sector: "Communication Services", subsector: "Telecom Services" },
+  "TSAT": { sector: "Information Technology", subsector: "Communications Equipment" },
+  "BKSY": { sector: "Industrials", subsector: "Specialty Business Services" },
 }
