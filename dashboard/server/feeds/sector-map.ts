@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 962
+// Total entries: 977
 
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
@@ -1075,4 +1075,18 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "APP": { sector: "Communication Services", subsector: "Advertising" },
   "AEVA": { sector: "Information Technology", subsector: "Systems Software" },
   "AMPL": { sector: "Information Technology", subsector: "Application Software" },
+  "BEAM": { sector: "Health Care", subsector: "Biotechnology" },
+  "ABCL": { sector: "Health Care", subsector: "Biotechnology" },
+  "WGS": { sector: "Health Care", subsector: "Biotechnology" },
+  "NTLA": { sector: "Health Care", subsector: "Biotechnology" },
+  "KRYS": { sector: "Health Care", subsector: "Biotechnology" },
+  "TWST": { sector: "Health Care", subsector: "Biotechnology" },
+  "DNA": { sector: "Health Care", subsector: "Biotechnology" },
+  "IOVA": { sector: "Health Care", subsector: "Biotechnology" },
+  "ILMN": { sector: "Health Care", subsector: "Biotechnology" },
+  "EDIT": { sector: "Health Care", subsector: "Biotechnology" },
+  "VCYT": { sector: "Health Care", subsector: "Biotechnology" },
+  "ISSC": { sector: "Industrials", subsector: "Aerospace & Defense" },
+  "AIR": { sector: "Industrials", subsector: "Aerospace & Defense" },
+  "POWW": { sector: "Industrials", subsector: "Aerospace & Defense" },
 }
