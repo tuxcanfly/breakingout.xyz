@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 985
+// Total entries: 986
 
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
@@ -1096,4 +1096,5 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "GSAT": { sector: "Communication Services", subsector: "Telecom Services" },
   "TSAT": { sector: "Information Technology", subsector: "Communications Equipment" },
   "BKSY": { sector: "Industrials", subsector: "Specialty Business Services" },
+  "GAME": { sector: "Communication Services", subsector: "Interactive Media & Services" },
 }
