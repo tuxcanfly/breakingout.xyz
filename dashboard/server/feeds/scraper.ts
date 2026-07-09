@@ -327,6 +327,8 @@ async function fetchCrypto(): Promise<ScreenerAsset[]> {
       { symbol: "LEO", yahooSymbol: "LEO-USD", name: "UNUS SED LEO", category: "crypto" },
       { symbol: "BGB", yahooSymbol: "BGB-USD", name: "Bitget Token", category: "crypto" },
       { symbol: "TON", yahooSymbol: "TON114-USD", name: "Toncoin", category: "crypto" },
+      { symbol: "HYPE", yahooSymbol: "HYPE32196-USD", name: "Hyperliquid", category: "crypto" },
+      { symbol: "LIT", yahooSymbol: "LIT6833-USD", name: "Litentry", category: "crypto" },
     ]
     const yahooFallback = await fetchYahooAssets(extraCrypto)
     assets = mergeAssets(assets, yahooFallback)

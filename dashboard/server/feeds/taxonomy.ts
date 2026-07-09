@@ -134,6 +134,25 @@ const CRYPTO_SECTORS: Record<string, Classification> = {
   IP: { sector: "Infrastructure", subsector: "IP" },
   PI: { sector: "L1", subsector: "Mobile" },
   BERA: { sector: "L1", subsector: "Smart Contract Platform" },
+  // DeFi / Perps
+  HYPE: { sector: "DeFi", subsector: "Perpetuals" },
+  LIT: { sector: "Infrastructure", subsector: "Identity" },
+  MORPHO: { sector: "DeFi", subsector: "Lending" },
+  BLUR: { sector: "DeFi", subsector: "NFT" },
+  PUMP: { sector: "Meme", subsector: "Launchpad" },
+  PENGU: { sector: "Meme", subsector: "Small Cap" },
+  ORDI: { sector: "Infrastructure", subsector: "Bitcoin" },
+  JST: { sector: "DeFi", subsector: "Stablecoin" },
+  SPELL: { sector: "DeFi", subsector: "Stablecoin" },
+  EGLD: { sector: "L1", subsector: "Smart Contract Platform" },
+  APE: { sector: "Gaming", subsector: "Metaverse" },
+  HMSTR: { sector: "Gaming", subsector: "Play to Earn" },
+  GRAM: { sector: "Infrastructure", subsector: "Messaging" },
+  GUN: { sector: "Gaming", subsector: "Infrastructure" },
+  THE: { sector: "DeFi", subsector: "DEX" },
+  SYN: { sector: "L2", subsector: "Interoperability" },
+  SKL: { sector: "Infrastructure", subsector: "Scaling" },
+  DEXE: { sector: "DeFi", subsector: "Social Trading" },
 }
 
 // Name-based fallback classification for symbols not in SECTOR_MAP
