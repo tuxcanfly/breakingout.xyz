@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 989
+// Total entries: 994
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
   "AAOI": { sector: "Information Technology", subsector: "Optical Components" },
@@ -1095,8 +1095,13 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "GSAT": { sector: "Communication Services", subsector: "Telecom Services" },
   "TSAT": { sector: "Information Technology", subsector: "Communications Equipment" },
   "BKSY": { sector: "Industrials", subsector: "Specialty Business Services" },
+  "BNTX": { sector: "Health Care", subsector: "Biotechnology" },
+  "EH": { sector: "Industrials", subsector: "Defense & Space" },
   "GAME": { sector: "Communication Services", subsector: "Interactive Media & Services" },
+  "GH": { sector: "Health Care", subsector: "Health Care Technology" },
   "KRKNF": { sector: "Industrials", subsector: "Aerospace & Defense" },
   "MDA": { sector: "Industrials", subsector: "Defense & Space" },
-  "EH": { sector: "Industrials", subsector: "Defense & Space" },
+  "PACB": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
+  "RLAY": { sector: "Health Care", subsector: "Biotechnology" },
+  "SDGR": { sector: "Health Care", subsector: "AI Drug Discovery" },
 }
