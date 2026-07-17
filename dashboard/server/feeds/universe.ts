@@ -108,6 +108,8 @@ export const ETF_UNIVERSE = [
   // Commodity
   "GLD","SLV","USO","UNG","DBC","GSG","DJP","USCI","PPLT","PALL",
   "CPER","GLDM","IAU","BNO","OIL","UGA",
+  // Precious Metals / Miners
+  "PHYS","PSLV","SGOL","GDX","GDXJ","GOEX","SIL","SILJ",
   // Crypto-linked
   "IBIT","FBTC","ETHU","BITB","ARKB","HODL","BITO","BITX","WGMI",
   // Thematic

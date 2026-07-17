@@ -1,5 +1,5 @@
 // Auto-generated from S&P 500 GICS data + ETF/extra stock classifications
-// Total entries: 994
+// Total entries: 1001
 export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> = {
   "A": { sector: "Health Care", subsector: "Life Sciences Tools & Services" },
   "AAOI": { sector: "Information Technology", subsector: "Optical Components" },
@@ -851,6 +851,13 @@ export const SECTOR_MAP: Record<string, { sector: string; subsector: string }> =
   "PPLT": { sector: "Commodities", subsector: "Precious Metals" },
   "GLD": { sector: "Commodities", subsector: "Precious Metals" },
   "SLV": { sector: "Commodities", subsector: "Precious Metals" },
+  "SGOL": { sector: "Commodities", subsector: "Precious Metals" },
+  "PHYS": { sector: "Commodities", subsector: "Precious Metals" },
+  "PSLV": { sector: "Commodities", subsector: "Precious Metals" },
+  "GOEX": { sector: "Materials", subsector: "Gold Miners ETF" },
+  "GDXJ": { sector: "Materials", subsector: "Gold Miners ETF" },
+  "SIL": { sector: "Materials", subsector: "Silver Miners ETF" },
+  "SILJ": { sector: "Materials", subsector: "Silver Miners ETF" },
   "SOXL": { sector: "Information Technology", subsector: "Leveraged ETF" },
   "SOXX": { sector: "Information Technology", subsector: "Semiconductor ETF" },
   "ITA": { sector: "Industrials", subsector: "Aerospace & Defense ETF" },
