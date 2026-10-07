@@ -1,39 +1,50 @@
-import type { ScreenerAsset } from "../types.js"
+import type { ScreenerAsset, MarketRegime, IntelTweet } from "../types.js"
 import { fetchTweetsForSymbol } from "./nitter.js"
 
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 const CACHE_TTL = 60 * 60 * 1000
 const insightCache = new Map<string, { text: string; timestamp: number }>()
 
-function buildPrompt(asset: ScreenerAsset, tweets: string[]): string {
+const fmt = (v: number | undefined, suffix = "") => (v === undefined || Number.isNaN(v) ? "N/A" : `${v}${suffix}`)
+
+function buildPrompt(asset: ScreenerAsset, market: MarketRegime, intel: IntelTweet[], tweets: string[]): string {
   const maStatus = [asset.ma10, asset.ma20, asset.ma50, asset.ma200]
     .map((m, i) => `${[10, 20, 50, 200][i]}: ${m === "up" ? "above" : "below"}`)
     .join(", ")
 
+  const regime = market.spyRegime
+    ? `SPY ${market.spyRegime}${market.spyVsEma140 !== undefined ? ` (${market.spyVsEma140}% vs 140EMA)` : ""}`
+    : "unknown"
+
+  // Tracked-account posts are curated, higher-signal than the open search.
+  const intelBlock = intel.length
+    ? `\nTracked analyst posts mentioning it:\n${intel
+        .map((t, i) => `${i + 1}. @${t.authorHandle} (${t.date.slice(0, 10)}): ${t.text.slice(0, 220)}`)
+        .join("\n")}`
+    : ""
   const tweetBlock = tweets.length
-    ? `\nRecent social signals:\n${tweets.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
+    ? `\nOther recent social chatter:\n${tweets.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
     : ""
 
-  return `You are a concise technical analyst. Analyze ${asset.symbol} (${asset.name}) in 2-3 tight sentences.
+  return `You are a concise momentum/breakout technical analyst. Analyze ${asset.symbol} (${asset.name}) in 2-3 tight sentences.
 
 Data:
-- Category: ${asset.category}
-- Price: ${asset.price ?? "N/A"}
-- 24h: ${asset.change24h ?? "N/A"}%
-- 1M: ${asset.pct1M}%
-- 3M: ${asset.pct3M}%
-- 6M: ${asset.pct6M}%
-- 1Y: ${asset.pct1Y}%
-- MAs: ${maStatus}
-- ADR: ${asset.adrPercent}%
-- Tight: ${asset.tightness ? "yes" : "no"}
-- Tags: ${(asset.tags ?? []).join(", ")}${tweetBlock}
+- Category: ${asset.category} · Sector: ${asset.sector}${asset.subsector ? ` / ${asset.subsector}` : ""}
+- Price: ${fmt(asset.price)} · 24h: ${fmt(asset.change24h, "%")}
+- Returns 1M/3M/6M/1Y: ${asset.pct1M}% / ${asset.pct3M}% / ${asset.pct6M}% / ${asset.pct1Y}%
+- MAs: ${maStatus} · Trend state: ${asset.trendState ?? "N/A"}
+- ADR: ${asset.adrPercent}% · RSI: ${fmt(asset.rsi)} · ATR ext vs 50SMA: ${fmt(asset.atrExtension)}
+- Dist to 3M high: ${fmt(asset.distToHighPct, "%")} · Coil tightness: ${fmt(asset.coilTightness)} (tight < 4)
+- Scores (0-100): Conviction ${fmt(asset.conviction)}, COIL ${fmt(asset.coilScore)}, RS ${fmt(asset.momentumRank)}, Setup ${fmt(asset.setupScore)}, Risk ${fmt(asset.riskScore)}
+- Market regime: ${regime}
+- Analyst consensus: ${asset.analystRating ? `${asset.analystRating.consensus} (${asset.analystRating.total} analysts)` : "N/A"}
+- Tags: ${(asset.tags ?? []).join(", ") || "none"}${intelBlock}${tweetBlock}
 
-Focus on momentum, trend alignment, and whether the setup favors longs or caution. Factor in any relevant social signals. Be direct and actionable. Max 80 words.`
+State whether the setup favors longs, a wait-for-trigger, or caution, and name the single level/condition that would change that view. Factor in the regime and any tracked-analyst posts. Be direct. No disclaimers. Max 80 words.`
 }
 
-export async function generateInsight(asset: ScreenerAsset): Promise<string> {
-  const cacheKey = `insight:${asset.symbol}`
+export async function generateInsight(asset: ScreenerAsset, market: MarketRegime, intel: IntelTweet[] = []): Promise<string> {
+  const cacheKey = `insight:${asset.category}:${asset.symbol}`
   const cached = insightCache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.text
@@ -45,7 +56,6 @@ export async function generateInsight(asset: ScreenerAsset): Promise<string> {
   }
 
   try {
-    // Fetch tweets in parallel with the API call prep
     const tweetRes = await fetchTweetsForSymbol(asset.symbol)
     const topTweets = tweetRes.tweets
       .filter((t) => t.text.length > 10)
@@ -60,9 +70,9 @@ export async function generateInsight(asset: ScreenerAsset): Promise<string> {
       },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [{ role: "user", content: buildPrompt(asset, topTweets) }],
-        max_tokens: 200,
-        temperature: 0.5,
+        messages: [{ role: "user", content: buildPrompt(asset, market, intel, topTweets) }],
+        max_tokens: 220,
+        temperature: 0.4,
       }),
       signal: AbortSignal.timeout(15000),
     })

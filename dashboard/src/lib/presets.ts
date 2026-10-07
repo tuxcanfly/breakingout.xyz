@@ -15,6 +15,12 @@ export const PRESETS: Preset[] = [
     test: (a) => (a.conviction ?? 0) >= 70 && (a.riskScore ?? 100) <= 55,
   },
   {
+    id: "intel",
+    label: "Intel picks",
+    title: "Mentioned by a tracked X account in the last 14 days (2+ accounts ranks first)",
+    test: (a) => (a.mentionedBy?.length ?? 0) > 0,
+  },
+  {
     id: "coil",
     label: "COIL setups",
     title: "Full COIL setup: trigger + tight base + momentum leadership",
@@ -95,7 +101,7 @@ export const PRESETS: Preset[] = [
   {
     id: "momentum-leader",
     label: "Momentum leaders",
-    title: "Top 5% blended 1M momentum",
+    title: "Blended 1M/3M/6M/1Y RS ≥ 95",
     test: (a) => a.tags?.includes("momentum-leader") ?? false,
   },
   {

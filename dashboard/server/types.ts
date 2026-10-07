@@ -22,6 +22,7 @@ export interface ScreenerAsset {
   pct1Y: number
   price?: number
   change24h?: number
+  underlyingSymbol?: string
   tokenSymbol?: string
   venue?: string
   chartSymbol?: string
@@ -56,8 +57,8 @@ export interface MarketRegime {
   spy50SMA: "above" | "below"
   spy20SMA: "above" | "below"
   spy10SMA: "above" | "below"
-  naaim: number
-  naaimDate: string
+  naaim: number | null
+  naaimDate: string | null
   btc200SMA?: "above" | "below"
   btc50SMA?: "above" | "below"
   gold200SMA?: "above" | "below"
@@ -69,6 +70,7 @@ export interface DashboardMeta {
   stale?: boolean
   refreshing?: boolean
   error?: string | null
+  nextRefresh?: string | null
 }
 
 export interface DashboardData {
@@ -79,17 +81,36 @@ export interface DashboardData {
   market: MarketRegime
   lastUpdated: string
   intel?: IntelTweet[]
+  intelHot?: IntelSymbol[]
+  intelStatus?: IntelStatus
   _meta?: DashboardMeta
 }
 
 export interface IntelTweet {
   author: string
   authorHandle: string
+  authorTag: string
   authorUrl: string
   text: string
   date: string
   link: string
   symbols: string[]
+}
+
+// Cashtag aggregated across tracked accounts within the recency window.
+export interface IntelSymbol {
+  symbol: string
+  accounts: string[]
+  mentions: number
+  lastMention: string
+}
+
+export interface IntelStatus {
+  accountsTotal: number
+  accountsOk: number
+  accountsStale: string[]
+  accountsFailed: string[]
+  windowDays: number
 }
 
 export interface NitterTweet {

@@ -64,7 +64,18 @@ export function AssetDetail({ asset, onClose }: Props) {
   const cryptoChartUrl = FINVIZ_CRYPTO_SYMBOLS.has(finvizSymbol.toUpperCase())
     ? `https://finviz.com/crypto_charts.ashx?t=${finvizSymbol.toUpperCase()}USD&ty=c&ta=1&p=d&s=l`
     : yahooUrl
-  const maIcons = [
+  const maIcons = ([
+    ["10", asset.ma10],
+    ["20", asset.ma20],
+    ["50", asset.ma50],
+    ["200", asset.ma200],
+  ] as const).map(([label, dir]) => ({ label: `${label} SMA`, up: dir === "up" }))
+
+  const scores: Array<{ label: string; value?: number; invert?: boolean; hint: string }> = [
+    { label: "Conviction", value: asset.conviction, hint: "Composite of COIL, RS and setup, gated by regime and risk" },
+    { label: "RS", value: asset.momentumRank, hint: "Blended 1M/3M/6M/1Y momentum percentile across the universe" },
+    { label: "Setup", value: asset.setupScore, hint: "MA alignment + tightness + RS" },
+    { label: "Risk", value: asset.riskScore, invert: true, hint: "ADR, trend state and recent weakness — lower is better" },
   ]
 
   return createPortal(
@@ -153,9 +164,11 @@ export function AssetDetail({ asset, onClose }: Props) {
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="p-1.5 rounded-md cursor-pointer"
-            style={{ color: "var(--sol-base01)" }}
+          onClick={onClose}
+          className="p-1.5 rounded-md cursor-pointer"
+          style={{ color: "var(--sol-base01)" }}
+          aria-label="Close"
+          title="Close (Esc)"
           >
             <X size={18} />
           </button>
@@ -201,8 +214,61 @@ export function AssetDetail({ asset, onClose }: Props) {
             ))}
           </div>
 
+          {/* Score strip */}
+          {asset.category !== "etfs" && (
+            <div className="grid grid-cols-4 gap-2">
+              {scores.map((s) => {
+                const v = s.value ?? 0
+                const good = s.invert ? v <= 40 : v >= 70
+                const bad = s.invert ? v > 60 : v < 40
+                const color = good ? "var(--sol-green)" : bad ? "var(--sol-red)" : "var(--sol-yellow)"
+                return (
+                  <div
+                    key={s.label}
+                    className="rounded-md border px-2 py-1.5"
+                    style={{ borderColor: "var(--sol-base2)", backgroundColor: "var(--sol-base2)" }}
+                    title={s.hint}
+                  >
+                    <div style={{ fontSize: "9px", color: "var(--sol-base01)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
+                      {s.label}
+                    </div>
+                    <div className="tabular-nums font-bold" style={{ fontSize: "15px", color }}>
+                      {s.value ?? "—"}
+                    </div>
+                    <div className="h-1 rounded-full mt-1" style={{ backgroundColor: "var(--sol-base1)", opacity: 0.6 }}>
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, v)}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Tracked-account mentions */}
+          {asset.mentionedBy && asset.mentionedBy.length > 0 && (
+            <div
+              className="flex items-center gap-1.5 flex-wrap rounded-md px-3 py-2"
+              style={{ backgroundColor: "rgba(211,54,130,0.07)", border: "1px solid rgba(211,54,130,0.25)", fontSize: "11px" }}
+            >
+              <span style={{ color: "var(--sol-magenta)", fontWeight: 600 }}>
+                Mentioned by {asset.mentionedBy.length} tracked account{asset.mentionedBy.length > 1 ? "s" : ""}:
+              </span>
+              {asset.mentionedBy.map((tag) => (
+                <a
+                  key={tag}
+                  href={`https://x.com/${tag}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--sol-blue)", textDecoration: "underline" }}
+                >
+                  @{tag}
+                </a>
+              ))}
+            </div>
+          )}
+
           {/* COIL setup breakdown */}
-          {asset.coilScore !== undefined && <CoilBreakdown asset={asset} />}
+          {asset.coilScore !== undefined && asset.category !== "etfs" && <CoilBreakdown asset={asset} />}
 
           {/* Chart */}
           <div
@@ -298,13 +364,21 @@ export function AssetDetail({ asset, onClose }: Props) {
                   fontSize: "12px",
                 }}
               >
-                No recent tweets found
+                No recent tweets found —{" "}
+                <a
+                  href={`https://x.com/search?q=%24${encodeURIComponent(asset.symbol)}&f=live`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--sol-blue)" }}
+                >
+                  search ${asset.symbol} on X
+                </a>
               </div>
             ) : (
               <div className="space-y-2">
                 {tweets.map((t, i) => (
                   <a
-                    key={i}
+                    key={t.link || i}
                     href={t.link || `https://x.com/search?q=%24${asset.symbol}`}
                     target="_blank"
                     rel="noopener noreferrer"

@@ -6,6 +6,30 @@ interface Props {
   activeCategory?: string
 }
 
+function MaPill({ label, status }: { label: string; status?: "above" | "below" }) {
+  if (!status) {
+    return (
+      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ color: "var(--sol-base1)" }} title="No data">
+        {label} —
+      </div>
+    )
+  }
+  const up = status === "above"
+  return (
+    <div
+      className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium"
+      style={{
+        backgroundColor: up ? "rgba(133, 153, 0, 0.1)" : "rgba(220, 50, 47, 0.1)",
+        color: up ? "var(--sol-green)" : "var(--sol-red)",
+      }}
+      title={`Price ${status} ${label}-day SMA`}
+    >
+      {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+      {label}
+    </div>
+  )
+}
+
 export function MarketBar({ market, activeCategory = "stocks" }: Props) {
   return (
     <div
@@ -52,18 +76,7 @@ export function MarketBar({ market, activeCategory = "stocks" }: Props) {
                 { label: "20", status: market.spy20SMA },
                 { label: "10", status: market.spy10SMA },
               ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium"
-                  style={{
-                    backgroundColor: item.status === "above"
-                      ? "rgba(133, 153, 0, 0.1)" : "rgba(220, 50, 47, 0.1)",
-                    color: item.status === "above" ? "var(--sol-green)" : "var(--sol-red)",
-                  }}
-                >
-                  {item.status === "above" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {item.label}
-                </div>
+                <MaPill key={item.label} label={item.label} status={item.status} />
               ))}
             </div>
           </div>
@@ -78,21 +91,10 @@ export function MarketBar({ market, activeCategory = "stocks" }: Props) {
             </span>
             <div className="flex gap-1.5">
               {[
-                { label: "200", status: market.btc200SMA || "above" },
-                { label: "50", status: market.btc50SMA || "above" },
+                { label: "200", status: market.btc200SMA },
+                { label: "50", status: market.btc50SMA },
               ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium"
-                  style={{
-                    backgroundColor: item.status === "above"
-                      ? "rgba(133, 153, 0, 0.1)" : "rgba(220, 50, 47, 0.1)",
-                    color: item.status === "above" ? "var(--sol-green)" : "var(--sol-red)",
-                  }}
-                >
-                  {item.status === "above" ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {item.label}
-                </div>
+                <MaPill key={item.label} label={item.label} status={item.status} />
               ))}
             </div>
           </div>
@@ -106,44 +108,40 @@ export function MarketBar({ market, activeCategory = "stocks" }: Props) {
               GLD
             </span>
             <div className="flex gap-1.5">
-              <div
-                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium"
-                style={{
-                  backgroundColor: "rgba(133, 153, 0, 0.1)",
-                  color: "var(--sol-green)",
-                }}
-              >
-                <TrendingUp className="w-3 h-3" />200
-              </div>
+              <MaPill label="200" status={market.gold200SMA} />
             </div>
           </div>
         )}
 
-        {/* NAAIM */}
-        <div className="flex items-center gap-3 ml-auto">
-          <div className="flex items-center gap-1.5">
-            <Gauge className="w-4 h-4" style={{ color: "var(--sol-violet)" }} />
-            <span className="text-sm font-medium" style={{ color: "var(--sol-base01)" }}>NAAIM</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-32 h-2 rounded-full" style={{ backgroundColor: "var(--sol-base1)" }}>
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min(market.naaim, 100)}%`,
-                  backgroundColor: market.naaim >= 70 && market.naaim <= 90
-                    ? "var(--sol-green)" : market.naaim > 90 ? "var(--sol-orange)" : "var(--sol-blue)",
-                }}
-              />
+        {/* NAAIM — only when the operator has supplied a real reading */}
+        {market.naaim !== null && (
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="flex items-center gap-1.5">
+              <Gauge className="w-4 h-4" style={{ color: "var(--sol-violet)" }} />
+              <span className="text-sm font-medium" style={{ color: "var(--sol-base01)" }}>NAAIM</span>
             </div>
-            <span className="text-sm font-bold" style={{ color: "var(--sol-violet)" }}>
-              {market.naaim.toFixed(1)}
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="w-32 h-2 rounded-full" style={{ backgroundColor: "var(--sol-base1)" }}>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(market.naaim, 100)}%`,
+                    backgroundColor: market.naaim >= 70 && market.naaim <= 90
+                      ? "var(--sol-green)" : market.naaim > 90 ? "var(--sol-orange)" : "var(--sol-blue)",
+                  }}
+                />
+              </div>
+              <span className="text-sm font-bold" style={{ color: "var(--sol-violet)" }}>
+                {market.naaim.toFixed(1)}
+              </span>
+            </div>
+            {market.naaimDate && (
+              <span className="text-xs" style={{ color: "var(--sol-base01)" }}>
+                {market.naaimDate}
+              </span>
+            )}
           </div>
-          <span className="text-xs" style={{ color: "var(--sol-base01)" }}>
-            {market.naaimDate}
-          </span>
-        </div>
+        )}
       </div>
     </div>
   )

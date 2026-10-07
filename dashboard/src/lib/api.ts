@@ -24,7 +24,8 @@ export async function fetchInsight(asset: ScreenerAsset): Promise<{ insight: str
   const res = await fetch(`${BASE_URL}/insight`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(asset),
+    // Server looks the asset up itself — send only the identity.
+    body: JSON.stringify({ symbol: asset.symbol, category: asset.category }),
   })
   if (!res.ok) throw new Error("Failed to fetch insight")
   return res.json()

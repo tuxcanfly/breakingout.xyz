@@ -105,7 +105,7 @@ export const ChartHover = memo(function ChartHover({
   }, [])
 
   const show = () => {
-    clearTimeout(timerRef.current)
+    if (timerRef.current) clearTimeout(timerRef.current)
     setOpen(true)
     setTweetLoading(true)
     fetchTweets(symbol)
@@ -119,16 +119,8 @@ export const ChartHover = memo(function ChartHover({
   }
 
   const keep = () => {
-    clearTimeout(timerRef.current)
+    if (timerRef.current) clearTimeout(timerRef.current)
   }
-
-  useEffect(() => {
-    if (!open) return
-    computePos()
-    const onResize = () => computePos()
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [open, computePos])
 
   useEffect(() => {
     if (!open) return
@@ -140,7 +132,7 @@ export const ChartHover = memo(function ChartHover({
 
   useEffect(
     () => () => {
-      clearTimeout(timerRef.current)
+      if (timerRef.current) clearTimeout(timerRef.current)
     },
     []
   )

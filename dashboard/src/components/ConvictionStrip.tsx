@@ -14,6 +14,7 @@ interface Props {
 function why(asset: ScreenerAsset): string {
   const tags = asset.tags ?? []
   if (tags.includes("coil")) return "Full COIL setup"
+  if (tags.includes("intel-consensus")) return `Flagged by ${asset.mentionedBy?.length ?? 2} tracked accounts`
   if (tags.includes("loaded-spring")) return "Loaded spring — coiled, hasn't run"
   if (tags.includes("quiet-coil")) return "Quiet coil — ADR contracting at highs"
   if (tags.includes("accelerating")) return "Accelerating momentum"
@@ -123,11 +124,16 @@ export function ConvictionStrip({ assets, market, onPick }: Props) {
               </div>
               <div style={{ fontSize: "10px", color: "var(--sol-base01)", marginBottom: 4 }}>
                 {why(asset)}
+                {asset.mentionedBy && asset.mentionedBy.length > 0 && !asset.tags?.includes("intel-consensus") && (
+                  <span style={{ color: "var(--sol-magenta)" }} title={asset.mentionedBy.map((m) => `@${m}`).join(", ")}>
+                    {" "}· @{asset.mentionedBy[0]}
+                  </span>
+                )}
               </div>
-              <div className="flex items-center justify-between" style={{ fontSize: "9px", color: "var(--sol-base1)" }}>
-                <span>{asset.sector}</span>
+              <div className="flex items-center justify-between gap-2" style={{ fontSize: "9px", color: "var(--sol-base1)" }}>
+                <span className="truncate">{asset.sector}</span>
                 <span className="tabular-nums">
-                  RS {asset.momentumRank ?? "—"} · {(asset.rsi ?? 0) > 0 ? `RSI ${asset.rsi}` : ""}
+                  RS {asset.momentumRank ?? "—"}{(asset.rsi ?? 0) > 0 ? ` · RSI ${Math.round(asset.rsi!)}` : ""}
                 </span>
               </div>
             </button>

@@ -35,6 +35,19 @@ function tightnessScore(a: ScreenerAsset): number {
 
 type TabId = AssetCategory | "all"
 
+const initialParams = new URLSearchParams(window.location.search)
+
+function timeAgo(iso: string | undefined): string {
+  if (!iso) return ""
+  const t = Date.parse(iso)
+  if (!t || t < 1e12) return "never"
+  const mins = Math.floor((Date.now() - t) / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  return hrs < 24 ? `${hrs}h ago` : `${Math.floor(hrs / 24)}d ago`
+}
+
 const tabs: { id: TabId; label: string }[] = [
   { id: "all", label: "All" },
   { id: "stocks", label: "Stocks" },
@@ -61,7 +74,7 @@ const HELP_SECTIONS = [
   },
   {
     title: "Intel",
-    body: "A curated feed of recent posts from 7 tracked\nX accounts. $TICKER chips are clickable —\nin-universe names open detail; others jump to\nthe table with that filter. Mentions also tag\nmatching assets.",
+    body: "A curated feed of recent posts from tracked\nX accounts. \"Hot\" ranks cashtags by how many\ndistinct accounts mentioned them in the last\n14 days. $TICKER chips are clickable — they open\nthe asset detail (off-universe names mentioned by\ntracked accounts are auto-added). Mentions tag\nassets; 2+ accounts → intel-consensus.",
   },
   {
     title: "COIL",
@@ -104,6 +117,7 @@ const HELP_SECTIONS = [
       <>
         National Association of Active Investment Managers exposure index.
         {"\n"}70–90 = favorable risk-on regime.
+        {"\n"}Now subscription-only; shown when NAAIM_VALUE is set on the server.
         {"\n"}Learn more: <ExternalLink href="https://www.naaim.org">naaim.org</ExternalLink>
       </>
     ),
@@ -117,7 +131,8 @@ const HELP_SECTIONS = [
         {"\n"}• all-ma-up — all MAs aligned bullish
         {"\n"}• coil — full COIL setup (trigger + tight + leader)
         {"\n"}• actionable — conviction ≥ 70 with risk ≤ 55
-        {"\n"}• momentum-leader — top 5% 1M return
+        {"\n"}• momentum-leader — blended RS ≥ 95
+        {"\n"}• intel-consensus — mentioned by 2+ tracked accounts (14d)
         {"\n"}• breakout — strong + MA aligned
         {"\n"}• extended-up — ≥ 2.5 ATR above 50 SMA (short-term overbought)
         {"\n"}• extended-down — ≥ 2.5 ATR below 50 SMA (short-term oversold)
@@ -174,11 +189,17 @@ function App() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<TabId>("all")
-  const [filter, setFilter] = useState("")
-  const [sectorFilter, setSectorFilter] = useState<string | null>(null)
-  const [presetFilter, setPresetFilter] = useState<string | null>(null)
-  const [showStarredOnly, setShowStarredOnly] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const t = initialParams.get("tab")
+    return tabs.some((x) => x.id === t) ? (t as TabId) : "all"
+  })
+  const [filter, setFilter] = useState(() => initialParams.get("q") ?? "")
+  const [sectorFilter, setSectorFilter] = useState<string | null>(() => initialParams.get("sector"))
+  const [presetFilter, setPresetFilter] = useState<string | null>(() => {
+    const p = initialParams.get("preset")
+    return p && PRESETS.some((x) => x.id === p) ? p : null
+  })
+  const [showStarredOnly, setShowStarredOnly] = useState(() => initialParams.get("starred") === "1")
   const [helpOpen, setHelpOpen] = useState(false)
   const [dense, setDense] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<ScreenerAsset | null>(null)
@@ -187,74 +208,118 @@ function App() {
   const searchRef = useRef<HTMLInputElement>(null)
   const helpRef = useRef<HTMLDivElement>(null)
 
+  const lastLoadRef = useRef(0)
+  const pollRef = useRef<number | undefined>(undefined)
+  const loadRef = useRef<() => void>(() => {})
+
+  // Background-safe loader: only the very first load shows the skeleton.
+  // Manual / periodic refreshes keep the table on screen (the old version
+  // swapped the whole table for a skeleton on every click of refresh).
   const loadData = useCallback(async () => {
+    window.clearTimeout(pollRef.current)
     try {
       setLoading(true)
       setError(null)
       const d = await fetchDashboard()
       setData(d)
+      lastLoadRef.current = Date.now()
+      // Server still warming up / mid-refresh → re-check soon.
+      if (d._meta?.refreshing) {
+        pollRef.current = window.setTimeout(() => loadRef.current(), d.stocks.length === 0 ? 3000 : 15000)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load data")
     } finally {
       setLoading(false)
     }
   }, [])
-
-  const lastLoadRef = useRef(0)
+  useEffect(() => {
+    loadRef.current = loadData
+  }, [loadData])
 
   useEffect(() => {
-    let cancelled = false
-    const refresh = async () => {
-      if (cancelled) return
-      try {
-        setLoading(true)
-        setError(null)
-        const d = await fetchDashboard()
-        setData(d)
-        lastLoadRef.current = Date.now()
-        // If server is still refreshing and arrays are empty, poll again shortly.
-        if (d._meta?.refreshing && d.stocks.length === 0) {
-          window.setTimeout(refresh, 3000)
-          return
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load data")
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    const initialLoad = window.setTimeout(refresh, 0)
+    const initialLoad = window.setTimeout(loadData, 0)
+    // Server refreshes every 15 min; pick that up while the tab is visible.
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadData()
+    }, 5 * 60 * 1000)
     const onFocus = () => {
-      if (Date.now() - lastLoadRef.current > 30 * 60 * 1000) {
-        refresh()
+      if (document.visibilityState === "visible" && Date.now() - lastLoadRef.current > 5 * 60 * 1000) {
+        loadData()
       }
     }
     document.addEventListener("visibilitychange", onFocus)
     window.addEventListener("focus", onFocus)
     return () => {
-      cancelled = true
       window.clearTimeout(initialLoad)
+      window.clearInterval(interval)
+      window.clearTimeout(pollRef.current)
       document.removeEventListener("visibilitychange", onFocus)
       window.removeEventListener("focus", onFocus)
     }
+  }, [loadData])
+
+  // Re-render the "updated Xm ago" label once a minute.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 60_000)
+    return () => window.clearInterval(id)
   }, [])
+
+  // Persist view state in the URL so a filtered view can be shared/bookmarked.
+  useEffect(() => {
+    const p = new URLSearchParams()
+    if (activeTab !== "all") p.set("tab", activeTab)
+    if (filter) p.set("q", filter)
+    if (presetFilter) p.set("preset", presetFilter)
+    if (sectorFilter) p.set("sector", sectorFilter)
+    if (showStarredOnly) p.set("starred", "1")
+    const qs = p.toString()
+    const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`
+    if (url !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(null, "", url)
+    }
+  }, [activeTab, filter, presetFilter, sectorFilter, showStarredOnly])
 
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (
-        e.key === "/" &&
-        !["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)
-      ) {
+      const target = e.target as HTMLElement | null
+      const typing = !!target && (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable)
+      if (e.key === "Escape") {
+        setHelpOpen(false)
+        // Esc inside the search box clears it and hands focus back to the page.
+        if (typing && target === searchRef.current) {
+          setFilter("")
+          searchRef.current?.blur()
+        }
+        return
+      }
+      // Single-key shortcuts must not hijack typing ("?" in a search, etc.).
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === "/") {
         e.preventDefault()
         searchRef.current?.focus()
+      } else if (e.key === "?") {
+        setHelpOpen((v) => !v)
+      } else if (e.key === "i") {
+        setShowIntel((v) => !v)
+      } else if (e.key === "s") {
+        setShowStarredOnly((v) => !v)
+      } else if (e.key === "r") {
+        loadData()
+      } else if (/^[1-5]$/.test(e.key)) {
+        const tab = tabs[Number(e.key) - 1]
+        if (tab) {
+          setActiveTab(tab.id)
+          setSectorFilter(null)
+          setPresetFilter(null)
+        }
       }
-      if (e.key === "?") setHelpOpen((v) => !v)
-      if (e.key === "Escape") setHelpOpen(false)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [])
+  }, [loadData])
 
   useEffect(() => {
     if (!helpOpen) return
@@ -348,8 +413,20 @@ function App() {
 
   // Symbol → asset lookup so the Intel feed can turn $TICKER chips into
   // clickable jumps to the right asset detail.
+  // First write wins, so stocks take precedence over a same-ticker crypto.
   const assetsBySymbol = new Map<string, ScreenerAsset>()
-  for (const a of allAssets) assetsBySymbol.set(a.symbol.toUpperCase(), a)
+  for (const a of allAssets) {
+    const k = a.symbol.toUpperCase()
+    if (!assetsBySymbol.has(k)) assetsBySymbol.set(k, a)
+  }
+  const intelCount = data.intel?.length ?? 0
+  const hasFilters = !!(filter || sectorFilter || presetFilter || showStarredOnly)
+  const clearFilters = () => {
+    setFilter("")
+    setSectorFilter(null)
+    setPresetFilter(null)
+    setShowStarredOnly(false)
+  }
 
   const activeAssets: ScreenerAsset[] = activeTab === "all" ? allAssets : data[activeTab]
 
@@ -451,7 +528,7 @@ function App() {
                 <div className="font-bold" style={{ color: "var(--sol-base02)", fontSize: "12px" }}>
                   Shortcuts
                 </div>
-                <div className="flex justify-between text-xs mt-1" style={{ color: "var(--sol-base01)" }}>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs mt-1" style={{ color: "var(--sol-base01)" }}>
                   <span>
                     <kbd
                       className="px-1 py-0.5 rounded"
@@ -479,6 +556,19 @@ function App() {
                     </kbd>{" "}
                     Close
                   </span>
+                  {[
+                    ["i", "Intel"],
+                    ["s", "Starred"],
+                    ["r", "Refresh"],
+                    ["1–5", "Tabs"],
+                  ].map(([k, label]) => (
+                    <span key={k}>
+                      <kbd className="px-1 py-0.5 rounded" style={{ background: "var(--sol-base2)", fontFamily: "monospace" }}>
+                        {k}
+                      </kbd>{" "}
+                      {label}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -573,11 +663,11 @@ function App() {
                   color: showIntel ? "white" : "var(--sol-base01)",
                   border: "1px solid var(--sol-base1)",
                 }}
-                title="Intel feed — tracked account tweets"
+                title="Intel feed — tracked account posts (i)"
               >
                 <Radio size={13} />
                 Intel
-                {(data?.intel?.length ?? 0) > 0 && (
+                {intelCount > 0 && (
                   <span
                     className="inline-flex items-center justify-center px-1 py-0 rounded-full tabular-nums"
                     style={{
@@ -587,7 +677,7 @@ function App() {
                       backgroundColor: showIntel ? "rgba(255,255,255,0.2)" : "var(--sol-base3)",
                     }}
                   >
-                    {data!.intel!.length}
+                    {intelCount}
                   </span>
                 )}
               </button>
@@ -602,7 +692,7 @@ function App() {
                   color: showStarredOnly ? "var(--sol-base03)" : "var(--sol-base01)",
                   border: "1px solid var(--sol-base1)",
                 }}
-                title="Show only starred tickers"
+                title="Show only starred tickers (s)"
               >
                 <Star size={13} fill={showStarredOnly ? "currentColor" : "none"} />
                 Starred
@@ -632,7 +722,7 @@ function App() {
                   disabled={loading}
                   className="flex items-center justify-center w-7 h-7 rounded-md cursor-pointer disabled:opacity-50 transition-colors"
                   style={{ color: "var(--sol-base01)" }}
-                  title="Refresh data"
+                  title="Refresh data (r)"
                 >
                   <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                 </button>
@@ -692,19 +782,30 @@ function App() {
                 </span>
               </button>
             ))}
-            {stale && (
+            <span
+              className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium tabular-nums"
+              style={{
+                fontSize: "10px",
+                color: stale || data._meta?.error ? "var(--sol-red)" : "var(--sol-base01)",
+                backgroundColor: stale || data._meta?.error ? "rgba(220,50,47,0.08)" : "transparent",
+                border: `1px solid ${stale || data._meta?.error ? "rgba(220,50,47,0.15)" : "transparent"}`,
+              }}
+              title={[
+                `Data updated ${new Date(data.lastUpdated).toLocaleString()}`,
+                data._meta?.nextRefresh ? `next server refresh ~${new Date(data._meta.nextRefresh).toLocaleTimeString()}` : "",
+                data._meta?.error ? `last refresh failed: ${data._meta.error}` : "",
+              ].filter(Boolean).join("\n")}
+            >
               <span
-                className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded-md font-medium"
+                className={data._meta?.refreshing ? "animate-pulse" : ""}
                 style={{
-                  fontSize: "10px",
-                  color: "var(--sol-red)",
-                  backgroundColor: "rgba(220,50,47,0.08)",
-                  border: "1px solid rgba(220,50,47,0.15)",
+                  width: 6, height: 6, borderRadius: 999, display: "inline-block",
+                  backgroundColor: data._meta?.refreshing ? "var(--sol-blue)" : stale ? "var(--sol-red)" : "var(--sol-green)",
                 }}
-              >
-                Cached data
-              </span>
-            )}
+              />
+              {data._meta?.refreshing ? "Refreshing… · " : stale ? "Stale · " : ""}
+              Updated {timeAgo(data.lastUpdated)}
+            </span>
           </div>
         </div>
       </header>
@@ -751,9 +852,42 @@ function App() {
           <PresetFilters active={presetFilter} onChange={setPresetFilter} counts={presetCounts} />
         </div>
 
-        {loading && <SkeletonTable />}
+        {hasFilters && (
+          <div className="mb-2 flex items-center gap-2" style={{ fontSize: "11px", color: "var(--sol-base01)" }}>
+            <span className="tabular-nums">
+              Showing <strong style={{ color: "var(--sol-base02)" }}>{filtered.length}</strong> of {activeAssets.length}
+            </span>
+            <button
+              onClick={clearFilters}
+              className="px-1.5 py-0.5 rounded cursor-pointer"
+              style={{ backgroundColor: "var(--sol-base2)", fontSize: "10px" }}
+            >
+              Clear all filters
+            </button>
+          </div>
+        )}
 
-        {!loading && (
+        {filtered.length === 0 ? (
+          <div
+            className="rounded-lg border p-8 text-center"
+            style={{ backgroundColor: "var(--sol-base2)", borderColor: "var(--sol-base1)", color: "var(--sol-base01)", fontSize: "13px" }}
+          >
+            {showStarredOnly && starred.size === 0
+              ? "No starred tickers yet — click the ☆ on any row to add one."
+              : "Nothing matches the current filters."}
+            {hasFilters && (
+              <div className="mt-2">
+                <button
+                  onClick={clearFilters}
+                  className="cursor-pointer px-3 py-1 rounded-md text-xs font-medium"
+                  style={{ background: "var(--sol-blue)", color: "#fff" }}
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
           <AssetTable
             assets={filtered}
             getTightness={tightnessScore}
@@ -782,13 +916,15 @@ function App() {
                 className="inline-flex items-center justify-center px-1.5 py-0 rounded-full tabular-nums font-normal"
                 style={{ backgroundColor: "var(--sol-base2)", fontSize: "10px", color: "var(--sol-base01)" }}
               >
-                {data.intel?.length ?? 0}
+                {intelCount}
               </span>
             </SheetTitle>
           </SheetHeader>
           <div className="px-3 pb-4">
             <IntelFeed
               tweets={data.intel ?? []}
+              hot={data.intelHot ?? []}
+              status={data.intelStatus}
               assetsBySymbol={assetsBySymbol}
               onSymbolClick={(sym) => {
                 setFilter(sym)

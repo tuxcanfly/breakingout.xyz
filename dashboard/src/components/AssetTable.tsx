@@ -742,6 +742,7 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   asymtrading: { bg: "rgba(133,153,0,0.10)", color: "#859900", border: "rgba(133,153,0,0.25)" },
   tenet_research: { bg: "rgba(38,139,210,0.10)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
   chairmansledger: { bg: "rgba(181,137,0,0.10)", color: "#b58900", border: "rgba(181,137,0,0.25)" },
+  "intel-consensus": { bg: "rgba(211,54,130,0.16)", color: "#d33682", border: "rgba(211,54,130,0.45)" },
 }
 
 const TAG_LINKS: Record<string, string> = {
@@ -749,8 +750,22 @@ const TAG_LINKS: Record<string, string> = {
   realsimpleariel: "https://x.com/realsimpleariel",
   stamatoudism: "https://x.com/stamatoudism",
   jfsrev: "https://x.com/jfsrev",
+  asymtrading: "https://x.com/asymtrading",
   tenet_research: "https://x.com/tenet_research",
   chairmansledger: "https://x.com/ChairmansLedger",
+}
+
+// Most informative tags first so the 3 visible slots aren't spent on
+// near-universal ones like tight-base / naaim.
+const TAG_PRIORITY = [
+  "coil", "actionable", "intel-consensus", "loaded-spring", "quiet-coil", "accelerating",
+  "breakout", "momentum-leader", "trending", "reversal-watch", "extended-up", "extended-down",
+]
+function tagRank(t: string): number {
+  const i = TAG_PRIORITY.indexOf(t)
+  if (i >= 0) return i
+  if (TAG_LINKS[t]) return TAG_PRIORITY.length // tracked-account mentions
+  return TAG_PRIORITY.length + 1
 }
 
 function TagList({ tags }: { tags?: string[] }) {
@@ -759,7 +774,11 @@ function TagList({ tags }: { tags?: string[] }) {
 
   if (!tags || tags.length === 0) return null
   // Filter out xstock tag — shown as badge next to symbol instead
-  const allVisible = tags.filter((t) => t !== "xstock")
+  const allVisible = tags
+    .filter((t) => t !== "xstock")
+    .map((t, i) => [t, i] as const)
+    .sort((a, b) => tagRank(a[0]) - tagRank(b[0]) || a[1] - b[1])
+    .map(([t]) => t)
   const display = allVisible.slice(0, 3)
   const hidden = allVisible.slice(3)
   const remaining = hidden.length

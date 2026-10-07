@@ -5,7 +5,8 @@ export interface XStockProduct {
   tvTicker: string
 }
 
-const AMEX_ETFS = new Set([
+// xStock underlyings that are ETFs — they belong in the ETF bucket, not stocks.
+export const AMEX_ETFS = new Set([
   "BITX", "COPX", "DAX", "EWG", "EWQ", "EWU", "EWY", "FEZ", "GDX", "GLD",
   "IEMG", "IJR", "ITA", "IWM", "MOO", "NLR", "PALL", "PPLT", "QQQ", "SCHF",
   "SGOV", "SLV", "SMH", "SOXL", "SOXX", "SPY", "TQQQ", "URA", "VGK", "VOO",

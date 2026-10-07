@@ -25,21 +25,38 @@ let dashboardData: DashboardData = {
   etfs: [],
   commodities: [],
   market: {
-    spy200SMA: "above",
-    spy50SMA: "above",
+    spy200SMA: "below",
+    spy50SMA: "below",
     spy20SMA: "below",
     spy10SMA: "below",
-    naaim: 86.82,
-    naaimDate: new Date().toISOString().slice(0, 10),
-    btc200SMA: "above",
-    btc50SMA: "above",
-    gold200SMA: "above",
+    naaim: null,
+    naaimDate: null,
   },
-  lastUpdated: new Date().toISOString(),
+  // Epoch until the first refresh lands, so the client can tell "never
+  // loaded" apart from "loaded just now".
+  lastUpdated: new Date(0).toISOString(),
 }
 
+const REFRESH_MS = 15 * 60 * 1000
 let isRefreshing = false
 let refreshError: string | null = null
+let nextRefreshAt: number | null = null
+
+// Keep last-good arrays when an upstream returns nothing — a TradingView or
+// Nitter blip used to blank whole categories until the next 15-min cycle.
+function mergeKeepingLastGood(prev: DashboardData, next: Omit<DashboardData, "lastUpdated">): Omit<DashboardData, "lastUpdated"> {
+  const keep = <T,>(n: T[] | undefined, p: T[] | undefined, min = 1) => (n && n.length >= min ? n : p ?? n ?? [])
+  return {
+    ...next,
+    // Stocks under ~half the previous count is a partial TV failure, not reality.
+    stocks: keep(next.stocks, prev.stocks, Math.max(1, Math.floor(prev.stocks.length * 0.5))),
+    crypto: keep(next.crypto, prev.crypto),
+    etfs: keep(next.etfs, prev.etfs),
+    commodities: keep(next.commodities, prev.commodities),
+    intel: keep(next.intel, prev.intel),
+    intelHot: next.intel?.length ? next.intelHot : prev.intelHot ?? next.intelHot,
+  }
+}
 
 async function refreshData() {
   if (isRefreshing) return
@@ -49,7 +66,7 @@ async function refreshData() {
 
   try {
     const data = await fetchAllAssets()
-    dashboardData = { ...data, lastUpdated: new Date().toISOString() }
+    dashboardData = { ...mergeKeepingLastGood(dashboardData, data), lastUpdated: new Date().toISOString() }
     const elapsed = ((Date.now() - start) / 1000).toFixed(1)
     console.log(
       `[${elapsed}s] Data refreshed: ${data.stocks.length} stocks, ${data.crypto.length} crypto, ${data.etfs.length} ETFs, ${data.commodities.length} commodities`
@@ -59,6 +76,7 @@ async function refreshData() {
     console.error("Refresh failed:", refreshError)
   } finally {
     isRefreshing = false
+    nextRefreshAt = Date.now() + REFRESH_MS
   }
 }
 
@@ -67,7 +85,15 @@ async function refreshData() {
 app.get("/api/dashboard", (_req, res) => {
   const staleMs = Date.now() - new Date(dashboardData.lastUpdated).getTime()
   const stale = staleMs > 30 * 60 * 1000
-  res.json({ ...dashboardData, _meta: { stale, refreshing: isRefreshing, error: refreshError } })
+  res.json({
+    ...dashboardData,
+    _meta: {
+      stale,
+      refreshing: isRefreshing,
+      error: refreshError,
+      nextRefresh: nextRefreshAt ? new Date(nextRefreshAt).toISOString() : null,
+    },
+  })
 })
 
 app.get("/api/market", (_req, res) => res.json(dashboardData.market))
@@ -86,12 +112,19 @@ app.get("/api/tweets", async (req, res) => {
 })
 
 app.post("/api/insight", async (req, res) => {
-  const asset = req.body as ScreenerAsset
-  if (!asset?.symbol || asset.symbol.length > 20) {
+  const body = req.body as Partial<ScreenerAsset>
+  if (!body?.symbol || body.symbol.length > 20) {
     return res.status(400).json({ error: "Invalid asset" })
   }
+  // Prefer the server's own copy so the prompt can't be stuffed by clients
+  // and always reflects current scores/tags/mentions.
+  const asset =
+    [...dashboardData.stocks, ...dashboardData.crypto, ...dashboardData.etfs, ...dashboardData.commodities]
+      .find((a) => a.symbol === body.symbol && (!body.category || a.category === body.category))
+  if (!asset) return res.status(404).json({ error: "Unknown asset" })
   try {
-    const insight = await generateInsight(asset)
+    const recentIntel = (dashboardData.intel ?? []).filter((t) => t.symbols.includes(asset.symbol)).slice(0, 4)
+    const insight = await generateInsight(asset, dashboardData.market, recentIntel)
     res.json({ insight })
   } catch {
     res.status(500).json({ error: "Insight generation failed" })
@@ -132,7 +165,7 @@ app.listen(PORT, () => {
 })
 
 refreshData().then(() => {
-  if (process.env.NODE_ENV === "production") {
-    setInterval(refreshData, 15 * 60 * 1000)
-  }
+  // Dev used to never refresh after boot, so long-running dev servers drifted
+  // silently stale. Set DISABLE_REFRESH=1 to opt out.
+  if (!process.env.DISABLE_REFRESH) setInterval(refreshData, REFRESH_MS)
 })

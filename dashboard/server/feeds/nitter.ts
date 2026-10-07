@@ -1,4 +1,4 @@
-import type { IntelTweet } from "../types.js"
+import type { IntelTweet, IntelSymbol, IntelStatus } from "../types.js"
 
 export interface NitterTweet {
   author: string
@@ -31,59 +31,92 @@ export const TRACKED_ACCOUNTS: TrackedAccount[] = [
   { handle: "ChairmansLedger", tag: "chairmansledger", name: "ChairmansLedger", xUrl: "https://x.com/ChairmansLedger" },
 ]
 
-const NITTER_INSTANCES = [
-  "http://167.179.82.187:8085",
-  "http://195.32.104.64:8081",
-  "http://79.85.161.133:8081",
-]
+const NITTER_INSTANCES = (process.env.NITTER_INSTANCES || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .concat([
+    "http://47.250.159.204:8080",
+    "http://188.166.184.52:8080",
+    "http://43.134.90.2:8080",
+    "http://64.83.38.200:8080",
+    "http://161.97.93.244:8080",
+    "http://78.141.221.250:8080",
+    "http://89.221.218.160:8080",
+    "http://172.93.49.117:8080",
+  ])
+  .filter((v, i, arr) => arr.indexOf(v) === i)
+
+const USER_AGENT = "breakingout.xyz/1.0"
+
+// Only mentions inside this window count toward per-asset tags / hot list.
+// Older posts still show in the feed but don't keep stamping assets forever.
+const MENTION_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 
 const tweetCache = new Map<string, { data: NitterResult; timestamp: number }>()
 const TWEET_CACHE_TTL = 10 * 60 * 1000
+const EMPTY_CACHE_TTL = 2 * 60 * 1000
+
+// Last good per-account result. When every instance fails for an account we
+// serve this instead of dropping the account from the feed entirely.
+const accountCache = new Map<string, { tweets: NitterTweet[]; timestamp: number }>()
+const ACCOUNT_STALE_MAX = 24 * 60 * 60 * 1000
 
 function sanitizeSymbol(symbol: string): string {
-  // Remove exchange prefixes and common suffixes
   return symbol.replace(/^(NASDAQ|NYSE|AMEX|BINANCE):/, "").replace(/USDT$/, "")
 }
 
 function buildQuery(symbol: string): string {
   const s = sanitizeSymbol(symbol)
-  // Use $ prefix for stocks, plain for crypto
   if (s.length <= 5 && s.match(/^[A-Z.]+$/)) {
     return encodeURIComponent(`$${s}`)
   }
   return encodeURIComponent(s)
 }
 
-function parseRSS(xml: string): NitterTweet[] {
-  const tweets: NitterTweet[] = []
-  const itemRegex = /<item>[\s\S]*?<\/item>/g
-  const items = xml.match(itemRegex) || []
+const ENTITIES: Record<string, string> = {
+  "&quot;": '"', "&amp;": "&", "&lt;": "<", "&gt;": ">", "&apos;": "'", "&#39;": "'", "&#x27;": "'", "&nbsp;": " ",
+}
 
-  for (const item of items.slice(0, 8)) {
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&(quot|amp|lt|gt|apos|nbsp|#39|#x27);/g, (m) => ENTITIES[m] ?? m)
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+}
+
+function parseRSS(xml: string, max = 20): NitterTweet[] {
+  const tweets: NitterTweet[] = []
+  const items = xml.match(/<item>[\s\S]*?<\/item>/g) || []
+
+  for (const item of items.slice(0, max)) {
     const titleMatch = item.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/)
     const linkMatch = item.match(/<link>(.*?)<\/link>/)
     const dateMatch = item.match(/<pubDate>(.*?)<\/pubDate>/)
     const creatorMatch = item.match(/<dc:creator>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/dc:creator>/)
       || item.match(/<author>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/author>/)
 
-    const text = titleMatch ? titleMatch[1].trim().replace(/&(quot|amp|lt|gt|apos|#39);/g, (m) => ({ "&quot;": '"', "&amp;": "&", "&lt;": "<", "&gt;": ">", "&apos;": "'", "&#39;": "'" }[m] ?? m)) : ""
+    const text = titleMatch ? decodeEntities(titleMatch[1].trim()) : ""
     if (!text) continue
 
     let link = linkMatch ? linkMatch[1].trim() : ""
-    // Convert Nitter link to x.com link
     if (link) {
       try {
         const url = new URL(link)
-        link = `https://x.com${url.pathname}`
+        link = `https://x.com${url.pathname.replace(/#m$/, "")}`
       } catch {
         link = ""
       }
     }
 
+    // Normalise to ISO so the client and sort comparisons are reliable —
+    // RFC-822 strings ("Tue, 06 Oct …") don't sort lexicographically.
+    const parsed = dateMatch ? new Date(dateMatch[1].trim()) : null
+    const date = parsed && !isNaN(parsed.getTime()) ? parsed.toISOString() : ""
+
     tweets.push({
       author: creatorMatch ? creatorMatch[1].trim() : "unknown",
       text,
-      date: dateMatch ? dateMatch[1].trim() : "",
+      date,
       link,
     })
   }
@@ -91,159 +124,173 @@ function parseRSS(xml: string): NitterTweet[] {
   return tweets
 }
 
-async function fetchFromInstance(instance: string, symbol: string): Promise<NitterResult | null> {
-  const query = buildQuery(symbol)
-  const url = `${instance}/search/rss?f=tweets&q=${query}&e-replies=on&e-nativeretweets=on&min_faves=5`
-
+async function fetchRSS(url: string, timeoutMs = 8000): Promise<NitterTweet[] | null> {
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "breakingout.xyz/1.0" },
-      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": USER_AGENT },
+      signal: AbortSignal.timeout(timeoutMs),
     })
     if (!res.ok) return null
     const xml = await res.text()
     if (!xml.includes("<item>")) return null
     const tweets = parseRSS(xml)
-    return { count: tweets.length, tweets }
+    return tweets.length ? tweets : null
   } catch {
     return null
   }
 }
 
+// Try instances in order; first non-empty answer wins. Kept sequential on
+// purpose — racing all instances × all accounts tripped public-instance rate
+// limits. The real load cut is fetchTrackedIntel doing one pass, not two.
+async function raceInstances(pathAndQuery: string): Promise<NitterTweet[] | null> {
+  for (const instance of NITTER_INSTANCES) {
+    const tweets = await fetchRSS(`${instance}${pathAndQuery}`)
+    if (tweets) return tweets
+  }
+  return null
+}
+
 // Cashtag extraction. Strict: only $TICKER form (1–5 uppercase letters,
 // optional trailing .B for share classes). Anything looser risks flooding the
-// universe with noise.
-const CASHTAG_RE = /\$([A-Z]{1,5}(?:\.[A-Z])?)/g
+// universe with noise. The lookbehind skips "$5" prices and URL fragments.
+const CASHTAG_RE = /(?<![A-Za-z0-9])\$([A-Z]{1,5}(?:\.[A-Z])?)(?![A-Za-z0-9])/g
+
+// Macro tickers that show up constantly in commentary but aren't picks.
+const CASHTAG_NOISE = new Set(["USD", "SPX", "NDX", "VIX", "DXY", "CPI", "FOMC", "GDP", "AI", "IPO", "CEO"])
+
+export function extractSymbolsFromText(text: string): string[] {
+  const out = new Set<string>()
+  for (const m of text.matchAll(CASHTAG_RE)) {
+    if (!CASHTAG_NOISE.has(m[1])) out.add(m[1])
+  }
+  return [...out]
+}
 
 export function extractSymbolsFromTweets(tweets: NitterTweet[]): Set<string> {
   const symbols = new Set<string>()
-  for (const t of tweets) {
-    let m: RegExpExecArray | null
-    CASHTAG_RE.lastIndex = 0
-    while ((m = CASHTAG_RE.exec(t.text)) !== null) {
-      symbols.add(m[1])
-    }
-  }
+  for (const t of tweets) for (const s of extractSymbolsFromText(t.text)) symbols.add(s)
   return symbols
 }
 
-function extractSymbolsFromText(text: string): string[] {
-  const out: string[] = []
-  let m: RegExpExecArray | null
-  CASHTAG_RE.lastIndex = 0
-  while ((m = CASHTAG_RE.exec(text)) !== null) {
-    out.push(m[1])
-  }
-  return out
+interface AccountFetch {
+  account: TrackedAccount
+  tweets: NitterTweet[]
+  ok: boolean
+  stale: boolean
 }
 
-async function fetchFromUser(instance: string, username: string): Promise<NitterTweet[]> {
-  const url = `${instance}/search/rss?f=tweets&q=from%3A${username}&e-replies=on&e-nativeretweets=on`
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "breakingout.xyz/1.0" },
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) return []
-    const xml = await res.text()
-    if (!xml.includes("<item>")) return []
-    return parseRSS(xml)
-  } catch {
-    return []
+async function fetchAccountTweets(account: TrackedAccount): Promise<AccountFetch> {
+  const fresh = await raceInstances(
+    `/search/rss?f=tweets&q=from%3A${encodeURIComponent(account.handle)}&e-replies=on&e-nativeretweets=on`
+  )
+  if (fresh) {
+    accountCache.set(account.handle, { tweets: fresh, timestamp: Date.now() })
+    return { account, tweets: fresh, ok: true, stale: false }
   }
+  const prev = accountCache.get(account.handle)
+  if (prev && Date.now() - prev.timestamp < ACCOUNT_STALE_MAX) {
+    return { account, tweets: prev.tweets, ok: false, stale: true }
+  }
+  return { account, tweets: [], ok: false, stale: false }
 }
 
-// Fetch recent tweets from a single tracked handle, trying instances in order.
-async function fetchAccountTweets(account: TrackedAccount): Promise<NitterTweet[]> {
-  for (const instance of NITTER_INSTANCES) {
-    const tweets = await fetchFromUser(instance, account.handle)
-    if (tweets.length > 0) return tweets
-  }
-  return []
-}
-
-// Strict-gated mentions map: tag -> Set of cashtags mentioned recently by that
-// account. Used for per-asset mention tags.
-export async function fetchTrackedMentionsMap(): Promise<{
-  byTag: Record<string, Set<string>>
+export interface TrackedIntel {
+  feed: IntelTweet[]
   bySymbol: Map<string, string[]>
-}> {
-  const byTag: Record<string, Set<string>> = {}
-  const bySymbol = new Map<string, string[]>()
-
-  const results = await Promise.all(
-    TRACKED_ACCOUNTS.map(async (acc) => {
-      const tweets = await fetchAccountTweets(acc)
-      return { acc, symbols: extractSymbolsFromTweets(tweets) }
-    })
-  )
-
-  for (const { acc, symbols } of results) {
-    byTag[acc.tag] = symbols
-    for (const sym of symbols) {
-      const existing = bySymbol.get(sym)
-      if (existing) {
-        if (!existing.includes(acc.tag)) existing.push(acc.tag)
-      } else {
-        bySymbol.set(sym, [acc.tag])
-      }
-    }
-  }
-
-  return { byTag, bySymbol }
+  hot: IntelSymbol[]
+  status: IntelStatus
 }
 
-// Union of recent tweets from all tracked accounts, annotated with the
-// author handle and any cashtags mentioned in the body. Powers the Intel tab.
-export async function fetchTrackedFeed(limit = 40): Promise<IntelTweet[]> {
-  const perAccount = await Promise.all(
-    TRACKED_ACCOUNTS.map(async (acc) => {
-      const tweets = await fetchAccountTweets(acc)
-      return tweets.map<IntelTweet>((t) => ({
-        author: acc.name,
-        authorHandle: acc.handle,
-        authorUrl: acc.xUrl,
-        text: t.text,
-        date: t.date,
-        link: t.link,
-        symbols: extractSymbolsFromText(t.text),
-      }))
-    })
+// One pass over every tracked account → feed, per-symbol mention map, and a
+// ranked "hot" list. Previously the feed and the mention map each fetched
+// every account independently, doubling Nitter load and rate-limit failures.
+export async function fetchTrackedIntel(limit = 60): Promise<TrackedIntel> {
+  const results = await Promise.all(TRACKED_ACCOUNTS.map(fetchAccountTweets))
+  const now = Date.now()
+
+  const flat: IntelTweet[] = results.flatMap(({ account, tweets }) =>
+    tweets.map((t) => ({
+      author: account.name,
+      authorHandle: account.handle,
+      authorTag: account.tag,
+      authorUrl: account.xUrl,
+      text: t.text,
+      date: t.date,
+      link: t.link,
+      symbols: extractSymbolsFromText(t.text),
+    }))
   )
 
-  const flat = perAccount.flat()
-  // Dedup by link (same tweet from different instance paths), keep most recent
   const seen = new Set<string>()
-  const deduped = flat
+  const feed = flat
     .filter((t) => {
       const key = t.link || `${t.authorHandle}:${t.text.slice(0, 60)}`
       if (seen.has(key)) return false
       seen.add(key)
       return true
     })
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-    .slice(0, limit)
+    .sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0))
 
-  return deduped
+  // Mention aggregation over the recency window only.
+  const agg = new Map<string, { accounts: Set<string>; count: number; last: number }>()
+  for (const t of feed) {
+    const ts = Date.parse(t.date)
+    if (!ts || now - ts > MENTION_WINDOW_MS) continue
+    for (const sym of t.symbols) {
+      const e = agg.get(sym) ?? { accounts: new Set<string>(), count: 0, last: 0 }
+      e.accounts.add(t.authorTag)
+      e.count++
+      e.last = Math.max(e.last, ts)
+      agg.set(sym, e)
+    }
+  }
+
+  const bySymbol = new Map<string, string[]>()
+  const hot: IntelSymbol[] = []
+  for (const [symbol, e] of agg) {
+    bySymbol.set(symbol, [...e.accounts])
+    hot.push({
+      symbol,
+      accounts: [...e.accounts],
+      mentions: e.count,
+      lastMention: new Date(e.last).toISOString(),
+    })
+  }
+  // Rank: distinct accounts (consensus) > mention count > recency.
+  hot.sort((a, b) =>
+    b.accounts.length - a.accounts.length ||
+    b.mentions - a.mentions ||
+    Date.parse(b.lastMention) - Date.parse(a.lastMention)
+  )
+
+  const status: IntelStatus = {
+    accountsTotal: TRACKED_ACCOUNTS.length,
+    accountsOk: results.filter((r) => r.ok).length,
+    accountsStale: results.filter((r) => r.stale).map((r) => r.account.handle),
+    accountsFailed: results.filter((r) => !r.ok && !r.stale).map((r) => r.account.handle),
+    windowDays: MENTION_WINDOW_MS / 86_400_000,
+  }
+
+  return { feed: feed.slice(0, limit), bySymbol, hot: hot.slice(0, 30), status }
 }
 
 export async function fetchTweetsForSymbol(symbol: string): Promise<NitterResult> {
   const cacheKey = `tweets:${symbol.toUpperCase()}`
   const cached = tweetCache.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < TWEET_CACHE_TTL) {
-    return cached.data
+  if (cached) {
+    const ttl = cached.data.count > 0 ? TWEET_CACHE_TTL : EMPTY_CACHE_TTL
+    if (Date.now() - cached.timestamp < ttl) return cached.data
   }
 
-  for (const instance of NITTER_INSTANCES) {
-    const result = await fetchFromInstance(instance, symbol)
-    if (result && result.count > 0) {
-      tweetCache.set(cacheKey, { data: result, timestamp: Date.now() })
-      return result
-    }
-  }
-
-  // Return empty but cache to avoid hammering dead instances
-  const empty: NitterResult = { count: 0, tweets: [] }
-  tweetCache.set(cacheKey, { data: empty, timestamp: Date.now() })
-  return empty
+  const tweets = await raceInstances(
+    `/search/rss?f=tweets&q=${buildQuery(symbol)}&e-replies=on&e-nativeretweets=on&min_faves=5`
+  )
+  const result: NitterResult = tweets
+    ? { count: Math.min(tweets.length, 8), tweets: tweets.slice(0, 8) }
+    : cached?.data ?? { count: 0, tweets: [] }
+  // Cache empties briefly to avoid hammering dead instances, but don't let
+  // a transient failure blank a symbol for the full TTL.
+  tweetCache.set(cacheKey, { data: result, timestamp: Date.now() })
+  return result
 }

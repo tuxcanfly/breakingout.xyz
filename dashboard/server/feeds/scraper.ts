@@ -1,4 +1,4 @@
-import type { ScreenerAsset, MarketRegime, AssetCategory, IntelTweet } from "../types.js"
+import type { ScreenerAsset, MarketRegime, AssetCategory } from "../types.js"
 import { classifyAsset } from "./taxonomy.js"
 import {
   coilTightness,
@@ -12,11 +12,8 @@ import {
 import { fetchTrendingStocks } from "./trending.js"
 import { fetchAnalystRatings, mergeAnalystRatings } from "./finnhub.js"
 import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
-import { XSTOCK_PRODUCTS } from "./xstocks.js"
-import {
-  fetchTrackedFeed,
-  fetchTrackedMentionsMap,
-} from "./nitter.js"
+import { XSTOCK_PRODUCTS, AMEX_ETFS } from "./xstocks.js"
+import { fetchTrackedIntel, type TrackedIntel } from "./nitter.js"
 import { fetchTopCryptoSymbols } from "./binance.js"
 import { SP500_STOCKS, EXTRA_STOCKS, EUROPEAN_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
 
@@ -75,8 +72,8 @@ async function scanTVChunkWithRetry(endpoint: string, tickers: string[], retries
         signal: AbortSignal.timeout(15000),
       })
       if (!res.ok) throw new Error(`TV ${endpoint} returned ${res.status}`)
-      const data = await res.json()
-      return (data.data as { s: string; d: unknown[] }[]).map((r) => ({
+      const data = await res.json() as { data?: unknown }
+      return ((data.data ?? []) as { s: string; d: unknown[] }[]).map((r) => ({
         symbol: r.s.split(":")[1] || r.s,
         v: r.d as number[],
       }))
@@ -155,6 +152,18 @@ function mergeAssets(primary: ScreenerAsset[], fallback: ScreenerAsset[]): Scree
   return [...primary, ...fallback.filter((a) => !seen.has(a.symbol))]
 }
 
+const COMMODITY_SYMBOLS = new Set(COMMODITY_UNIVERSE.map((t) => t.split(":")[1] || t))
+const STOCK_XSTOCKS = XSTOCK_PRODUCTS.filter((p) => !AMEX_ETFS.has(p.underlyingSymbol))
+const ETF_XSTOCKS = XSTOCK_PRODUCTS.filter((p) => AMEX_ETFS.has(p.underlyingSymbol))
+
+function withXStockMeta(assets: ScreenerAsset[], products: typeof XSTOCK_PRODUCTS): ScreenerAsset[] {
+  const map = new Map(products.map((p) => [p.underlyingSymbol, p]))
+  return assets.map((a) => {
+    const p = map.get(a.symbol)
+    return p ? { ...a, tokenSymbol: p.tokenSymbol, venue: "xStocks" } : a
+  })
+}
+
 function yahooSeeds(symbols: string[], category: AssetCategory): YahooAssetSeed[] {
   return [...new Set(symbols)].map((symbol) => ({ symbol, category }))
 }
@@ -166,12 +175,14 @@ async function fetchStocks(): Promise<ScreenerAsset[]> {
   if (cached) return cached
 
   try {
-    // Build unique ticker list: S&P 500 + extras + xStock underlyings
+    // Build unique ticker list: S&P 500 + extras + xStock underlyings.
+    // ETF-backed xStocks (SPYx, GLDx…) live in the ETF bucket instead, so
+    // they don't show up twice under different categories.
     const allStockSymbols = [
       ...new Set([
         ...SP500_STOCKS,
         ...EXTRA_STOCKS,
-        ...XSTOCK_PRODUCTS.map((p) => p.underlyingSymbol),
+        ...STOCK_XSTOCKS.map((p) => p.underlyingSymbol),
       ]),
     ]
 
@@ -203,7 +214,7 @@ async function fetchStocks(): Promise<ScreenerAsset[]> {
 
     // Merge xStock metadata into underlying stocks. xStocks now live under the
     // normal "stocks" category with an xstock tag instead of a separate bucket.
-    const xstockMap = new Map(XSTOCK_PRODUCTS.map((p) => [p.underlyingSymbol, p]))
+    const xstockMap = new Map(STOCK_XSTOCKS.map((p) => [p.underlyingSymbol, p]))
     const mergedStocks: ScreenerAsset[] = []
     for (const asset of assets) {
       const xProduct = xstockMap.get(asset.symbol)
@@ -220,7 +231,7 @@ async function fetchStocks(): Promise<ScreenerAsset[]> {
 
     // If any xStock underlying is completely missing, fetch it standalone
     const presentUnderlyings = new Set(mergedStocks.map((a) => a.symbol))
-    for (const p of XSTOCK_PRODUCTS) {
+    for (const p of STOCK_XSTOCKS) {
       if (!presentUnderlyings.has(p.underlyingSymbol)) {
         const yahoo = await fetchYahooAssets([
           {
@@ -255,21 +266,25 @@ async function fetchETFs(): Promise<ScreenerAsset[]> {
   if (cached) return cached
 
   try {
+    // Commodity funds (GLD, SLV, USO…) are shown under Commodities only.
+    const etfSymbols = [...new Set([...ETF_UNIVERSE, ...ETF_XSTOCKS.map((p) => p.underlyingSymbol)])]
+      .filter((s) => !COMMODITY_SYMBOLS.has(s))
     let assets: ScreenerAsset[] = []
     try {
-      const rows = await scanTV("https://scanner.tradingview.com/america/scan", ETF_UNIVERSE)
+      const rows = await scanTV("https://scanner.tradingview.com/america/scan", etfSymbols)
       assets = rows.filter((r) => r.v[1] > 0).map((r) => makeAsset(r.symbol, r.v, "etfs"))
     } catch (err) {
       console.error("ETFs TradingView fetch:", err instanceof Error ? err.message : String(err))
     }
 
     const tvSymbols = new Set(assets.map((a) => a.symbol))
-    const missing = ETF_UNIVERSE.filter((s) => !tvSymbols.has(s))
+    const missing = etfSymbols.filter((s) => !tvSymbols.has(s))
     if (missing.length > 0) {
       const fallback = await fetchYahooAssets(yahooSeeds(missing, "etfs"))
       assets = mergeAssets(assets, fallback)
     }
 
+    assets = withXStockMeta(assets, ETF_XSTOCKS)
     setCache("etfs", assets)
     return assets
   } catch (err) {
@@ -286,7 +301,10 @@ async function fetchCommodities(): Promise<ScreenerAsset[]> {
 
   try {
     const rows = await scanTV("https://scanner.tradingview.com/america/scan", COMMODITY_UNIVERSE)
-    const assets = rows.filter((r) => r.v[1] > 0).map((r) => makeAsset(r.symbol, r.v, "commodities"))
+    const assets = withXStockMeta(
+      rows.filter((r) => r.v[1] > 0).map((r) => makeAsset(r.symbol, r.v, "commodities")),
+      ETF_XSTOCKS,
+    )
     setCache("commodities", assets)
     return assets
   } catch (err) {
@@ -384,11 +402,7 @@ async function fetchMarketRegime(): Promise<MarketRegime> {
       spy50SMA: "below",
       spy20SMA: "below",
       spy10SMA: "below",
-      naaim: 86.82,
-      naaimDate: new Date().toISOString().slice(0, 10),
-      btc200SMA: "above",
-      btc50SMA: "above",
-      gold200SMA: "above",
+      ...naaimFromEnv(),
     }
     if (rows.length) {
       const v = rows[0].v
@@ -396,7 +410,9 @@ async function fetchMarketRegime(): Promise<MarketRegime> {
       m.spy20SMA = close >= (v[8] as number) ? "above" : "below"
       m.spy50SMA = close >= (v[9] as number) ? "above" : "below"
       m.spy200SMA = close >= (v[10] as number) ? "above" : "below"
-      m.spy10SMA = (v[3] as number) > 0 ? "above" : "below"
+      // Index 13 is SMA10 (index 3 is Perf.1M — the old code compared the
+      // 1-month return to zero and called it the 10-day MA).
+      m.spy10SMA = close >= (v[13] as number) ? "above" : "below"
     }
     if (ema140) {
       m.spyRegime = ema140.regime
@@ -409,26 +425,51 @@ async function fetchMarketRegime(): Promise<MarketRegime> {
   } catch (err) {
     console.error("Market fetch:", err instanceof Error ? err.message : String(err))
     return getCached<MarketRegime>("market") || {
-      spy200SMA: "above",
-      spy50SMA: "above",
+      spy200SMA: "below",
+      spy50SMA: "below",
       spy20SMA: "below",
       spy10SMA: "below",
-      naaim: 86.82,
-      naaimDate: new Date().toISOString().slice(0, 10),
-      btc200SMA: "above",
-      btc50SMA: "above",
-      gold200SMA: "above",
+      ...naaimFromEnv(),
     }
+  }
+}
+
+// NAAIM moved behind a subscription, so there's no free feed to scrape.
+// Operators set NAAIM_VALUE / NAAIM_DATE when the weekly number drops; absent
+// that we report null rather than a fabricated reading stamped with today.
+function naaimFromEnv(): Pick<MarketRegime, "naaim" | "naaimDate"> {
+  const v = parseFloat(process.env.NAAIM_VALUE ?? "")
+  return Number.isFinite(v)
+    ? { naaim: v, naaimDate: process.env.NAAIM_DATE || null }
+    : { naaim: null, naaimDate: null }
+}
+
+// BTC / GLD regime from the already-fetched assets instead of hardcoding
+// "above" — those badges were decorative before.
+function withCrossAssetRegime(m: MarketRegime, crypto: ScreenerAsset[], commodities: ScreenerAsset[]): MarketRegime {
+  const btc = crypto.find((a) => a.symbol === "BTC")
+  const gld = commodities.find((a) => a.symbol === "GLD")
+  const dir = (x: "up" | "down") => (x === "up" ? "above" as const : "below" as const)
+  return {
+    ...m,
+    ...(btc ? { btc200SMA: dir(btc.ma200), btc50SMA: dir(btc.ma50) } : {}),
+    ...(gld ? { gold200SMA: dir(gld.ma200) } : {}),
   }
 }
 
 // ── Signals ────────────────────────────────────────────────────────────────
 
-function percentile(value: number, values: number[]): number {
-  const clean = values.filter((v) => !Number.isNaN(v)).sort((a, b) => a - b)
-  if (clean.length <= 1) return 50
-  const below = clean.filter((v) => v <= value).length - 1
-  return Math.round(Math.max(0, Math.min(100, (below / (clean.length - 1)) * 100)))
+// Percentile of `value` within an ascending-sorted array (binary search).
+function percentileSorted(value: number, sorted: number[]): number {
+  if (sorted.length <= 1) return 50
+  let lo = 0, hi = sorted.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (sorted[mid] <= value) lo = mid + 1
+    else hi = mid
+  }
+  const below = lo - 1
+  return Math.round(Math.max(0, Math.min(100, (below / (sorted.length - 1)) * 100)))
 }
 
 function trendState(a: ScreenerAsset): ScreenerAsset["trendState"] {
@@ -477,9 +518,17 @@ function scoreConviction(a: ScreenerAsset, market: MarketRegime): number {
 // Blended cross-sectional momentum over 1/3/6/12-month horizons — the
 // strongest factor in the breakout study (fwd60 spread 4.8% vs 2.5% for
 // top-ranked names vs the rest).
+const sortedCache = new WeakMap<ScreenerAsset[], Record<string, number[]>>()
+function sortedHorizon(pool: ScreenerAsset[], h: "pct1M" | "pct3M" | "pct6M" | "pct1Y"): number[] {
+  let byH = sortedCache.get(pool)
+  if (!byH) { byH = {}; sortedCache.set(pool, byH) }
+  if (!byH[h]) byH[h] = pool.map((x) => x[h]).filter((v) => !Number.isNaN(v)).sort((x, y) => x - y)
+  return byH[h]
+}
+
 function blendedMomentum(a: ScreenerAsset, pool: ScreenerAsset[]): number {
   const horizons: Array<"pct1M" | "pct3M" | "pct6M" | "pct1Y"> = ["pct1M", "pct3M", "pct6M", "pct1Y"]
-  const ranks = horizons.map((h) => percentile(a[h], pool.map((x) => x[h])))
+  const ranks = horizons.map((h) => percentileSorted(a[h], sortedHorizon(pool, h)))
   return Math.round(ranks.reduce((s, r) => s + r, 0) / ranks.length)
 }
 
@@ -497,6 +546,15 @@ function scoreCoil(a: ScreenerAsset): number {
 }
 
 function computeSignals(assets: ScreenerAsset[], market: MarketRegime): ScreenerAsset[] {
+  // Rank pools: ETFs excluded so leveraged/sector funds don't distort the
+  // stock/crypto momentum percentiles they're never compared against.
+  const rankable = assets.filter((a) => a.category !== "etfs")
+  const poolCache = new Map<string, ScreenerAsset[]>()
+  const pool = (key: string, pred: (x: ScreenerAsset) => boolean) => {
+    let p = poolCache.get(key)
+    if (!p) { p = rankable.filter(pred); poolCache.set(key, p) }
+    return p
+  }
   return assets.map((a) => {
     // ETFs aren't breakout candidates — skip COIL / setup / conviction scoring.
     if (a.category === "etfs") {
@@ -511,55 +569,74 @@ function computeSignals(assets: ScreenerAsset[], market: MarketRegime): Screener
         conviction: 0,
       }
     }
-    const sectorPool = assets.filter((x) => x.sector === a.sector)
-    const categoryPool = assets.filter((x) => x.category === a.category)
+    const sectorPool = pool(`s:${a.sector}`, (x) => x.sector === a.sector)
+    const categoryPool = pool(`c:${a.category}`, (x) => x.category === a.category)
     const withRanks: ScreenerAsset = {
       ...a,
-      momentumRank: blendedMomentum(a, assets),
+      momentumRank: blendedMomentum(a, rankable),
       categoryRank: blendedMomentum(a, categoryPool),
       sectorRank: blendedMomentum(a, sectorPool),
       trendState: trendState(a),
     }
-    return {
+    const scored: ScreenerAsset = {
       ...withRanks,
       setupScore: scoreSetup(withRanks),
       riskScore: scoreRisk(withRanks),
       coilScore: scoreCoil(withRanks),
-      conviction: scoreConviction(withRanks, market),
     }
+    // Conviction must see the component scores — it was previously computed
+    // from `withRanks`, where coil/setup/risk were all undefined → 0, which
+    // capped every asset at ~33 and left the Top Conviction strip empty.
+    return { ...scored, conviction: scoreConviction(scored, market) }
   })
+}
+
+// Full COIL setup — all three backtested conditions stacked (mirrors the
+// breakdown shown in AssetDetail). Nothing used to set this tag, so the
+// "COIL setups" preset was always empty.
+function isFullCoil(a: ScreenerAsset): boolean {
+  return (
+    a.distToHighPct !== undefined && a.distToHighPct >= -1 &&
+    a.coilTightness !== undefined && a.coilTightness < 4 &&
+    (a.momentumRank ?? 0) >= 89
+  )
 }
 
 function computeTags(
   assets: ScreenerAsset[],
   market: MarketRegime,
-  allAssets: ScreenerAsset[],
   mentionsBySymbol: Map<string, string[]>,
+  trendingSymbols: Set<string>,
   adrP25ByCategory: Record<string, number>
 ): ScreenerAsset[] {
-
+  const naaimFavorable = market.naaim !== null && market.naaim >= 70 && market.naaim <= 90
   return assets.map((a) => {
     const t: string[] = []
-    if (a.tags?.includes("coil")) t.push("coil")
-    if (a.tags?.includes("trending")) t.push("trending")
-    if (a.momentumRank !== undefined && a.momentumRank <= 5) t.push("momentum-leader")
-    if (a.setupScore !== undefined && a.setupScore >= 70 && a.riskScore !== undefined && a.riskScore <= 55) t.push("actionable")
+    const breakoutCandidate = a.category !== "etfs"
+    if (breakoutCandidate && isFullCoil(a)) t.push("coil")
+    if (trendingSymbols.has(a.symbol.toUpperCase())) t.push("trending")
+    // momentumRank is a 0–100 percentile where 100 = strongest. The old
+    // `<= 5` check tagged the *weakest* 5% as leaders.
+    if (breakoutCandidate && (a.momentumRank ?? 0) >= 95) t.push("momentum-leader")
+    // Same definition as the Actionable preset / help text.
+    if ((a.conviction ?? 0) >= 70 && (a.riskScore ?? 100) <= 55) t.push("actionable")
     if (a.ma10 === "up" && a.ma20 === "up" && a.ma50 === "up" && a.ma200 === "up") t.push("all-ma-up")
     if (a.pct1M > 10 && a.ma10 === "up" && a.ma20 === "up" && a.ma50 === "up") t.push("breakout")
     if (a.pct1M > 0 && a.pct3M > 0 && a.pct6M > 0) t.push("stage2")
     if (a.coilTightness !== undefined && a.coilTightness < 4) t.push("tight-base")
     if (a.rsi !== undefined && a.rsi <= 30) t.push("rsi-oversold")
     if (a.rsi !== undefined && a.rsi >= 70) t.push("rsi-overbought")
-    if (market.naaim >= 70 && market.naaim <= 90 && a.ma50 === "up") t.push("naaim")
-    if (isLoadedSpring(a)) t.push("loaded-spring")
+    if (naaimFavorable && a.ma50 === "up") t.push("naaim")
+    if (breakoutCandidate && isLoadedSpring(a)) t.push("loaded-spring")
     if (isAccelerating(a)) t.push("accelerating")
     if (a.distToHighPct !== undefined && isQuietCoil(a, adrP25ByCategory[a.category] ?? 0)) t.push("quiet-coil")
     if (isRegimeAligned(a, market)) t.push("regime-aligned")
     if (isReversalWatch(a)) t.push("reversal-watch")
     const ext = atrExtensionState(a)
     if (ext) t.push(ext)
-    const mentioners = mentionsBySymbol.get(a.symbol)
+    const mentioners = mentionsBySymbol.get(a.symbol.toUpperCase())
     if (mentioners && mentioners.length > 0) {
+      if (mentioners.length >= 2) t.push("intel-consensus")
       for (const tag of mentioners) t.push(tag)
     }
     if (a.tokenSymbol) t.push("xstock")
@@ -567,64 +644,84 @@ function computeTags(
   })
 }
 
+const EU_SUFFIXES = [".L", ".DE", ".PA", ".ST", ".AS", ".MI", ".BR", ".SW"]
+
 // ── Unified fetch ──────────────────────────────────────────────────────────
 
+const EMPTY_INTEL: TrackedIntel = {
+  feed: [],
+  bySymbol: new Map(),
+  hot: [],
+  status: { accountsTotal: 0, accountsOk: 0, accountsStale: [], accountsFailed: [], windowDays: 0 },
+}
+
 export async function fetchAllAssets() {
-  const [stocks, crypto, etfs, commodities, market, mentionsMap, intel, trending] = await Promise.all([
+  const [stocks, crypto, etfs, commodities, baseMarket, intel, trending] = await Promise.all([
     fetchStocks(),
     fetchCrypto(),
     fetchETFs(),
     fetchCommodities(),
     fetchMarketRegime(),
-    fetchTrackedMentionsMap(),
-    fetchTrackedFeed(40).catch((err): IntelTweet[] => {
-      console.error("Intel feed fetch:", err instanceof Error ? err.message : String(err))
-      return []
+    fetchTrackedIntel(60).catch((err): TrackedIntel => {
+      console.error("Intel fetch:", err instanceof Error ? err.message : String(err))
+      return EMPTY_INTEL
     }),
-    fetchTrendingStocks().catch((err) => {
+    fetchTrendingStocks().catch((err): Awaited<ReturnType<typeof fetchTrendingStocks>> => {
       console.error("Trending stocks fetch:", err instanceof Error ? err.message : String(err))
-      return { symbols: [], bySource: {}, overlap: 0, errors: [String(err)] }
+      return { symbols: [], results: [], bySource: {}, overlap: 0, errors: [String(err)] }
     }),
   ])
 
-  const trendingBySymbol = new Map(trending.symbols.map((s) => [s.toUpperCase(), trending.results.find((r) => r.symbol.toUpperCase() === s.toUpperCase())]))
+  const market = withCrossAssetRegime(baseMarket, crypto, commodities)
+  const trendingBySymbol = new Map(trending.results.map((r) => [r.symbol.toUpperCase(), r]))
 
   console.log(
     `Trending stocks: ${trending.symbols.length} unique (ApeWisdom ${trending.bySource.apewisdom ?? 0}, Yahoo ${trending.bySource.yahoo ?? 0}, overlap ${trending.overlap})${trending.errors.length ? " errors: " + trending.errors.join("; ") : ""}`
+  )
+  const s = intel.status
+  console.log(
+    `Intel: ${intel.feed.length} posts, ${intel.hot.length} hot symbols, accounts ${s.accountsOk}/${s.accountsTotal} live` +
+      (s.accountsStale.length ? `, stale: ${s.accountsStale.join(",")}` : "") +
+      (s.accountsFailed.length ? `, failed: ${s.accountsFailed.join(",")}` : "")
   )
 
   const knownSymbols = new Set(
     [...stocks, ...crypto, ...etfs, ...commodities].map((a) => a.symbol.toUpperCase())
   )
-  const trendingCandidates = trending.symbols.filter((s) => !knownSymbols.has(s.toUpperCase()))
-  let trendingAssets: ScreenerAsset[] = []
-  if (trendingCandidates.length > 0) {
-    const EU_SUFFIXES = [".L", ".DE", ".PA", ".ST", ".AS", ".MI", ".BR", ".SW"]
-    trendingAssets = (
-      await fetchYahooAssets(
-                trendingCandidates.map((s) => ({
-                  symbol: s,
-                  category: "stocks" as AssetCategory,
-                  fallbackSymbols: EU_SUFFIXES.map((suf) => `${s}${suf}`),
-                  name: trendingBySymbol.get(s.toUpperCase())?.name,
-                  minBars: 1,
-                }))
-      )
-    ).map((a) => ({ ...a, tags: ["trending"] }))
-    console.log(`Resolved trending stocks: ${trendingAssets.length}/${trendingCandidates.length}`)
+  // Resolve off-universe names that the crowd (trending) or the tracked
+  // accounts (intel) are talking about, so their cashtags are clickable and
+  // they get scored like everything else.
+  const extraCandidates = [
+    ...trending.symbols.map((sym) => ({ sym, name: trendingBySymbol.get(sym.toUpperCase())?.name })),
+    ...intel.hot.map((h) => ({ sym: h.symbol, name: undefined as string | undefined })),
+  ].filter((c, i, arr) =>
+    !knownSymbols.has(c.sym.toUpperCase()) &&
+    arr.findIndex((x) => x.sym.toUpperCase() === c.sym.toUpperCase()) === i
+  )
+  let extraAssets: ScreenerAsset[] = []
+  if (extraCandidates.length > 0) {
+    extraAssets = await fetchYahooAssets(
+      extraCandidates.map((c) => ({
+        symbol: c.sym,
+        category: "stocks" as AssetCategory,
+        fallbackSymbols: EU_SUFFIXES.map((suf) => `${c.sym}${suf}`),
+        name: c.name,
+        minBars: 1,
+      }))
+    )
+    console.log(`Resolved off-universe trending/intel names: ${extraAssets.length}/${extraCandidates.length}`)
   }
 
-  const baseStocks = [...stocks, ...trendingAssets]
+  const baseStocks = [...stocks, ...extraAssets]
   const allForSignals = [...baseStocks, ...crypto, ...etfs, ...commodities]
   const signaled = computeSignals(allForSignals, market)
   const byKey = new Map(signaled.map((a) => [`${a.category}:${a.symbol}`, a]))
   const pick = (items: ScreenerAsset[]) => items.map((a) => byKey.get(`${a.category}:${a.symbol}`) || a)
-  const all = signaled
 
   // Per-category ADR 25th percentile — the threshold for the quiet-coil signal.
   const adrP25ByCategory: Record<string, number> = {}
   for (const cat of ["stocks", "crypto", "etfs", "commodities"] as AssetCategory[]) {
-    const adrs = all
+    const adrs = signaled
       .filter((a) => a.category === cat)
       .map((a) => a.adrPercent)
       .filter((n) => Number.isFinite(n))
@@ -634,17 +731,22 @@ export async function fetchAllAssets() {
 
   const ratings = await fetchAnalystRatings(pick(baseStocks)).catch((err) => {
     console.error("Analyst ratings fetch:", err instanceof Error ? err.message : String(err))
-    return new Map<string, { consensus: "strong buy" | "buy" | "hold" | "sell" | "strong sell"; score: number; strongBuy: number; buy: number; hold: number; sell: number; strongSell: number; total: number }>()
+    return new Map<string, NonNullable<ScreenerAsset["analystRating"]>>()
   })
   const ratedStocks = mergeAnalystRatings(pick(baseStocks), ratings)
   console.log(`Merged analyst ratings: ${ratedStocks.filter((a) => a.analystRating).length}/${ratedStocks.length}`)
 
+  const trendingSet = new Set(trending.symbols.map((x) => x.toUpperCase()))
+  const tag = (items: ScreenerAsset[]) => computeTags(items, market, intel.bySymbol, trendingSet, adrP25ByCategory)
+
   return {
-    stocks: computeTags(ratedStocks, market, all, mentionsMap.bySymbol, adrP25ByCategory),
-    crypto: computeTags(pick(crypto), market, all, mentionsMap.bySymbol, adrP25ByCategory),
-    etfs: computeTags(pick(etfs), market, all, mentionsMap.bySymbol, adrP25ByCategory),
-    commodities: computeTags(pick(commodities), market, all, mentionsMap.bySymbol, adrP25ByCategory),
+    stocks: tag(ratedStocks),
+    crypto: tag(pick(crypto)),
+    etfs: tag(pick(etfs)),
+    commodities: tag(pick(commodities)),
     market,
-    intel,
+    intel: intel.feed,
+    intelHot: intel.hot,
+    intelStatus: intel.status,
   }
 }
