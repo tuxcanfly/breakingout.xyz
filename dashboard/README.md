@@ -12,6 +12,28 @@ React 19 + TypeScript + Tailwind CSS v4 (Solarized Light)
 Express + Puppeteer (screener scraper)  
 Recharts · Finviz embeds · NAAIM regime filter
 
+## Data sources
+
+All free, no API key required.
+
+| Source | Used for |
+| --- | --- |
+| TradingView scanner | Quotes, moving averages, RSI, volume |
+| Yahoo Finance | Fallback quotes, EU listings, trending |
+| ApeWisdom | Retail trending tickers |
+| Nitter (public instances) | Tracked X accounts → Intel feed. Override with `NITTER_INSTANCES` |
+| Cboe delayed quotes | Equity/ETF option chains — IV, greeks, volume, open interest |
+| Deribit public API | BTC/ETH options (the only free crypto options feed) |
+| Nasdaq | Per-symbol earnings dates |
+| SEC EDGAR | Filings: 8-K, 13D/G stakes, 425 mergers, Form 4. Set `SEC_USER_AGENT` to a descriptive string including a contact URL/email |
+| Google News RSS | Headlines (catalyst confirmation only) |
+| ClinicalTrials.gov | Trial milestones for biotech |
+
+Optional environment variables: `DEEPSEEK_API_KEY` (AI insight), `FINNHUB_API_KEY`
+(analyst ratings), `NAAIM_VALUE` / `NAAIM_DATE` (NAAIM exposure — now
+subscription-only, so it is hidden unless set), `SEC_USER_AGENT`,
+`NITTER_INSTANCES`, `DISABLE_REFRESH=1` to stop the 15-minute server refresh.
+
 ## Local dev
 
 ```bash

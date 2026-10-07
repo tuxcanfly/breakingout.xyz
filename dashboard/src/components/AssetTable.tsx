@@ -743,6 +743,7 @@ const tagStyles: Record<string, { bg: string; color: string; border: string }> =
   tenet_research: { bg: "rgba(38,139,210,0.10)", color: "#268bd2", border: "rgba(38,139,210,0.25)" },
   chairmansledger: { bg: "rgba(181,137,0,0.10)", color: "#b58900", border: "rgba(181,137,0,0.25)" },
   "intel-consensus": { bg: "rgba(211,54,130,0.16)", color: "#d33682", border: "rgba(211,54,130,0.45)" },
+  "unusual-options": { bg: "rgba(203,75,22,0.14)", color: "#cb4b16", border: "rgba(203,75,22,0.40)" },
 }
 
 const TAG_LINKS: Record<string, string> = {
@@ -758,7 +759,7 @@ const TAG_LINKS: Record<string, string> = {
 // Most informative tags first so the 3 visible slots aren't spent on
 // near-universal ones like tight-base / naaim.
 const TAG_PRIORITY = [
-  "coil", "actionable", "intel-consensus", "loaded-spring", "quiet-coil", "accelerating",
+  "coil", "actionable", "unusual-options", "intel-consensus", "loaded-spring", "quiet-coil", "accelerating",
   "breakout", "momentum-leader", "trending", "reversal-watch", "extended-up", "extended-down",
 ]
 function tagRank(t: string): number {

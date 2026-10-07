@@ -7,6 +7,8 @@ import { fileURLToPath } from "url"
 import { fetchAllAssets } from "./feeds/scraper.js"
 import { fetchTweetsForSymbol } from "./feeds/nitter.js"
 import { generateInsight } from "./feeds/insights.js"
+import { fetchFlow } from "./feeds/options.js"
+import { buildCatalystReport } from "./feeds/catalysts.js"
 import type { DashboardData, ScreenerAsset } from "./types.js"
 
 if (existsSync("/etc/secrets/.env")) {
@@ -55,6 +57,8 @@ function mergeKeepingLastGood(prev: DashboardData, next: Omit<DashboardData, "la
     commodities: keep(next.commodities, prev.commodities),
     intel: keep(next.intel, prev.intel),
     intelHot: next.intel?.length ? next.intelHot : prev.intelHot ?? next.intelHot,
+    // A failed options scan shouldn't wipe the board the user is reading.
+    flow: next.flow?.length ? next.flow : prev.flow ?? next.flow,
   }
 }
 
@@ -131,12 +135,42 @@ app.post("/api/insight", async (req, res) => {
   }
 })
 
+// On-demand flow + catalyst for any symbol (the dashboard board only covers a
+// shortlist, so the detail sheet needs its own path).
+app.get("/api/flow", async (req, res) => {
+  const symbol = String(req.query.symbol || "").toUpperCase()
+  const category = String(req.query.category || "stocks")
+  if (!symbol || symbol.length > 12 || !/^[A-Z0-9.-]+$/.test(symbol)) {
+    return res.status(400).json({ error: "Invalid symbol" })
+  }
+  try {
+    const flow = await fetchFlow(symbol, category)
+    if (!flow) return res.json({ flow: null, catalyst: null, reason: "No listed options chain for this symbol." })
+    const asset = [...dashboardData.stocks, ...dashboardData.crypto, ...dashboardData.etfs, ...dashboardData.commodities]
+      .find((a) => a.symbol === symbol)
+    const catalyst = await buildCatalystReport(symbol, {
+      category,
+      name: asset?.name ?? symbol,
+      sector: asset?.sector,
+      subsector: asset?.subsector,
+      intel: dashboardData.intel ?? [],
+      toSymbol: asset?.underlyingSymbol || symbol,
+      trending: !!asset?.tags?.includes("trending"),
+      flowPremium: flow.unusualPremium,
+    }).catch(() => undefined)
+    res.json({ flow, catalyst: catalyst ?? null })
+  } catch {
+    res.status(500).json({ error: "Flow lookup failed" })
+  }
+})
+
 app.get("/api/health", (_req, res) => {
   const staleMs = Date.now() - new Date(dashboardData.lastUpdated).getTime()
   const healthy = dashboardData.stocks.length > 100 && staleMs < 60 * 60 * 1000
   res.status(healthy ? 200 : 503).json({
     ok: healthy,
     stocks: dashboardData.stocks.length,
+    flow: dashboardData.flow?.length ?? 0,
     lastUpdated: dashboardData.lastUpdated,
     refreshing: isRefreshing,
   })

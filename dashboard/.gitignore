@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Generated at runtime (rolling IV snapshots for IV rank)
+data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

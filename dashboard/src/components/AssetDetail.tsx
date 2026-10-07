@@ -4,6 +4,7 @@ import { X, TrendingUp, TrendingDown, Minus, MessageCircle, Sparkles } from "luc
 import type { ScreenerAsset, NitterTweet } from "../types"
 import { fetchTweets, fetchInsight } from "../lib/api"
 import { Markdown } from "./Markdown"
+import { FlowPanels } from "./FlowPanels"
 
 interface Props {
   asset: ScreenerAsset | null
@@ -309,6 +310,9 @@ export function AssetDetail({ asset, onClose }: Props) {
               </a>
             </div>
           </div>
+
+          {/* Options flow + probable catalyst */}
+          <FlowPanels symbol={asset.symbol} category={asset.category} />
 
           {/* AI Insight */}
           <div

@@ -21,6 +21,12 @@ export const PRESETS: Preset[] = [
     test: (a) => (a.mentionedBy?.length ?? 0) > 0,
   },
   {
+    id: "unusual-options",
+    label: "Unusual options",
+    title: "Fresh out-of-the-money option positioning large versus the name's own chain",
+    test: (a) => a.tags?.includes("unusual-options") ?? false,
+  },
+  {
     id: "coil",
     label: "COIL setups",
     title: "Full COIL setup: trigger + tight base + momentum leadership",

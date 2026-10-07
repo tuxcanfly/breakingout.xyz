@@ -15,6 +15,7 @@ import { fetchYahooAssets, type YahooAssetSeed } from "./yahoo.js"
 import { XSTOCK_PRODUCTS, AMEX_ETFS } from "./xstocks.js"
 import { fetchTrackedIntel, type TrackedIntel } from "./nitter.js"
 import { fetchTopCryptoSymbols } from "./binance.js"
+import { scanFlow } from "./flow-scan.js"
 import { SP500_STOCKS, EXTRA_STOCKS, EUROPEAN_STOCKS, ETF_UNIVERSE, CRYPTO_UNIVERSE, COMMODITY_UNIVERSE } from "./universe.js"
 
 interface CacheEntry<T> { data: T; timestamp: number }
@@ -607,7 +608,8 @@ function computeTags(
   market: MarketRegime,
   mentionsBySymbol: Map<string, string[]>,
   trendingSymbols: Set<string>,
-  adrP25ByCategory: Record<string, number>
+  adrP25ByCategory: Record<string, number>,
+  unusualFlow: Set<string>,
 ): ScreenerAsset[] {
   const naaimFavorable = market.naaim !== null && market.naaim >= 70 && market.naaim <= 90
   return assets.map((a) => {
@@ -640,6 +642,7 @@ function computeTags(
       for (const tag of mentioners) t.push(tag)
     }
     if (a.tokenSymbol) t.push("xstock")
+    if (unusualFlow.has(a.symbol)) t.push("unusual-options")
     return { ...a, tags: t, mentionedBy: mentioners }
   })
 }
@@ -737,7 +740,16 @@ export async function fetchAllAssets() {
   console.log(`Merged analyst ratings: ${ratedStocks.filter((a) => a.analystRating).length}/${ratedStocks.length}`)
 
   const trendingSet = new Set(trending.symbols.map((x) => x.toUpperCase()))
-  const tag = (items: ScreenerAsset[]) => computeTags(items, market, intel.bySymbol, trendingSet, adrP25ByCategory)
+
+  // Unusual options — its own shortlist pass; failures must not break a refresh.
+  const flow = await scanFlow(signaled, { intel: intel.feed, trending: trendingSet }).catch((err) => {
+    console.error("Options flow scan:", err instanceof Error ? err.message : String(err))
+    return []
+  })
+  const unusualFlow = new Set(flow.map((f) => f.symbol))
+
+  const tag = (items: ScreenerAsset[]) =>
+    computeTags(items, market, intel.bySymbol, trendingSet, adrP25ByCategory, unusualFlow)
 
   return {
     stocks: tag(ratedStocks),
@@ -745,6 +757,7 @@ export async function fetchAllAssets() {
     etfs: tag(pick(etfs)),
     commodities: tag(pick(commodities)),
     market,
+    flow,
     intel: intel.feed,
     intelHot: intel.hot,
     intelStatus: intel.status,

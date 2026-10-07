@@ -82,6 +82,7 @@ export interface DashboardData {
   lastUpdated: string
   intel?: IntelTweet[]
   intelHot?: IntelSymbol[]
+  flow?: FlowEntry[]
   intelStatus?: IntelStatus
   _meta?: DashboardMeta
 }
@@ -98,6 +99,81 @@ export interface IntelTweet {
 }
 
 // Cashtag aggregated across tracked accounts within the recency window.
+// ── Unusual options / catalyst ─────────────────────────────────────────────
+
+export interface OptionPrint {
+  contract: string
+  type: "call" | "put"
+  strike: number
+  expiry: string
+  dte: number
+  volume: number
+  openInterest: number
+  iv: number
+  delta: number | null
+  premium: number
+  ratio: number
+  otmPct: number
+}
+
+export interface OptionsFlow {
+  symbol: string
+  kind: "equity" | "crypto"
+  source: "cboe" | "deribit"
+  asOf: string
+  spot: number
+  iv: number | null
+  ivChange: number | null
+  ivRank: number | null
+  callPremium: number
+  putPremium: number
+  tiltRatio: number | null
+  tilt: "bullish" | "bearish" | "balanced"
+  impliedMovePct: number | null
+  impliedMoveExpiry: string | null
+  skew: number | null
+  unusualPremium: number
+  /** Largest premium ÷ chain-median premium among the flagged prints. */
+  maxNotability: number
+  chainPremium: number
+  flagged: number
+  prints: OptionPrint[]
+}
+
+export type CatalystKind = "earnings" | "filing" | "stake" | "merger" | "offering" | "insider" | "clinical" | "squeeze" | "news"
+
+export interface CatalystEvent {
+  kind: CatalystKind
+  label: string
+  date?: string
+  daysAway?: number
+  confidence: "high" | "medium" | "low"
+  source: string
+  url?: string
+}
+
+export interface CatalystReport {
+  symbol: string
+  probable: CatalystEvent | null
+  rationale: string
+  events: CatalystEvent[]
+  chatter: {
+    accounts: string[]
+    trending: boolean
+    headlines: Array<{ title: string; date: string; url?: string }>
+  }
+}
+
+export interface FlowEntry {
+  symbol: string
+  name: string
+  category: AssetCategory
+  sector: string
+  conviction?: number
+  flow: OptionsFlow
+  catalyst?: CatalystReport
+}
+
 export interface IntelSymbol {
   symbol: string
   accounts: string[]

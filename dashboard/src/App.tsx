@@ -8,6 +8,7 @@ import { MarketBar } from "./components/MarketBar"
 import { PresetFilters } from "./components/PresetFilters"
 import { ConvictionStrip } from "./components/ConvictionStrip"
 import { IntelFeed } from "./components/IntelFeed"
+import { FlowStrip } from "./components/FlowStrip"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./components/ui/sheet"
 import { PRESETS } from "./lib/presets"
 import { useNewSymbols } from "./lib/useNewSymbols"
@@ -71,6 +72,14 @@ const HELP_SECTIONS = [
   {
     title: "Conviction",
     body: "The actionable composite (0–100) surfaced in\nthe Top Conviction strip. Blends COIL, relative\nstrength, and setup, then gates by SPY regime\nand risk. Sort by this when you want trades,\nnot just screens.",
+  },
+  {
+    title: "Unusual options",
+    body: "Fresh out-of-the-money positioning found in\ndelayed option chains (Cboe equities,\nDeribit crypto). \"×\" is the largest print's\npremium divided by that name's median\ncontract premium — $1M is routine in NVDA\nand enormous in a mid-cap, so the ratio is\nwhat makes a print unusual. Measures\npositioning, not sweeps: there is no free\ntrade-level (aggressor) data.",
+  },
+  {
+    title: "Probable catalyst",
+    body: "Reverse-engineered from free evidence,\nstrongest first: SEC filings (8-K, 13D stake,\n425 merger), then scheduled earnings dates,\nthen trial milestones, and finally news\nheadlines — which only ever confirm, never\nlead, so they cap out at low confidence.\n\"No dated catalyst found\" is reported rather\nthan guessed at.",
   },
   {
     title: "Intel",
@@ -818,6 +827,14 @@ function App() {
           <ConvictionStrip
             assets={allAssets}
             market={data.market}
+            onPick={(asset) => setSelectedAsset(asset)}
+          />
+        </div>
+
+        <div className="mt-1">
+          <FlowStrip
+            entries={data.flow ?? []}
+            assetsBySymbol={assetsBySymbol}
             onPick={(asset) => setSelectedAsset(asset)}
           />
         </div>

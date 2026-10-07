@@ -1,4 +1,4 @@
-import type { DashboardData, MarketRegime, NitterResult, ScreenerAsset } from "../types"
+import type { CatalystReport, DashboardData, MarketRegime, NitterResult, OptionsFlow, ScreenerAsset } from "../types"
 
 const BASE_URL = "/api"
 
@@ -17,6 +17,18 @@ export async function fetchMarket(): Promise<MarketRegime> {
 export async function fetchTweets(symbol: string): Promise<NitterResult> {
   const res = await fetch(`${BASE_URL}/tweets?symbol=${encodeURIComponent(symbol)}`)
   if (!res.ok) throw new Error("Failed to fetch tweets")
+  return res.json()
+}
+
+export interface FlowResponse {
+  flow: OptionsFlow | null
+  catalyst: CatalystReport | null
+  reason?: string
+}
+
+export async function fetchFlowDetail(symbol: string, category: string): Promise<FlowResponse> {
+  const res = await fetch(`${BASE_URL}/flow?symbol=${encodeURIComponent(symbol)}&category=${encodeURIComponent(category)}`)
+  if (!res.ok) throw new Error("Failed to fetch options flow")
   return res.json()
 }
 
