@@ -85,7 +85,9 @@ export const EXTRA_STOCKS = [
 "SQ","STI","STUB","TEAM","TEM","TENB","TOST","TSEM","TWLO","TXG",
 "U","UEC","UMC","UPST","VFS","VICR","VIVO","VKTX","VRNS","VSH",
 "VSXY","W","WING","WOLF","WRBY","WULF","YSS","ZS",
-"ANT","CRML","FIGR","MP","RCAT","SATL","SPCX","UMAC"
+"ANT","ATI","AVAV","BKSY","CRML","DLO","EXK","FIGR","GGAL","HOV",
+"LB","LGIH","MP","OUST","POWL","PRCT","RCAT","SATL","SPCX","STRL",
+"SYM","UMAC"
 ]
 
 // ── ETF universe ──────────────────────────────────────────────────────────
