@@ -84,7 +84,8 @@ export const EXTRA_STOCKS = [
 "SEDG","SHAZ","SHOP","SLNH","SMR","SNAP","SNOW","SOFI","SOUN","SPOT",
 "SQ","STI","STUB","TEAM","TEM","TENB","TOST","TSEM","TWLO","TXG",
 "U","UEC","UMC","UPST","VFS","VICR","VIVO","VKTX","VRNS","VSH",
-"VSXY","W","WING","WOLF","WRBY","WULF","YSS","ZS"
+"VSXY","W","WING","WOLF","WRBY","WULF","YSS","ZS",
+"ANT","CRML","FIGR","MP","RCAT","SATL","SPCX","UMAC"
 ]
 
 // ── ETF universe ──────────────────────────────────────────────────────────
@@ -162,6 +163,7 @@ export const CRYPTO_UNIVERSE = [
   "MORPHOUSDT","BLURUSDT","PUMPUSDT","PENGUUSDT","ORDIUSDT",
   "JSTUSDT","SPELLUSDT","EGLDUSDT","APEUSDT","HMSTRUSDT","GRAMUSDT",
   "GUNUSDT","THEUSDT","SYNUSDT","SKLUSDT","DEXEUSDT",
+  "HYPEUSDT","WLFIUSDT",
 ]
 
 // ── Commodity universe (AMEX ETFs) ────────────────────────────────────────
